@@ -40,10 +40,10 @@
 
 /* Customer Brand Theme */
 :root[data-theme="customer-brand"] {
-    --primary-color: #d54b2a;
-    --primary-dark: #B03D23;
-    --primary-light: #E56B51;
-    --secondary-color: #6C6B66;
+    --primary-color: #00457D; /* Peter Pohl Blau */
+    --primary-dark: #00335c; /* Dunkleres Blau für Hover-Effekte */
+    --primary-light: #005a9e; /* Helleres Blau für Hover-Effekte */
+    --secondary-color: #FFEC00; /* Peter Pohl Gelb */
     --background-color: #FCFCFD;
     --surface-color: #FFFFFF;
     --surface-light: #f0f0f0;
@@ -53,8 +53,8 @@
     --success-color: #198754;
     --error-color: #dc3545;
     --disabled-color: #b5b5b5;
-    --info-color: #5865F2; /* Discord-like blue for standout */
-    --glow-color: rgba(212, 74, 44, 0.3);
+    --info-color: #5865F2; 
+    --glow-color: rgba(0, 69, 125, 0.3); /* Leuchtfarbe an das neue Blau angepasst */
     --body-gradient: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
 }
 
