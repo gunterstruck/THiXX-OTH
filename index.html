@@ -4,16 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- 🟢 Theme Bootstrap: Muss als allererstes geladen werden -->
-  <script src="theme-bootstrap.js"></script>
+  <script src="/THiXX-OTH/assets/theme-bootstrap.js"></script>
     
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self';">
     
     <title>ThiXX - NFC PWA</title>
-    <link rel="manifest" href="/ThiXX/manifest.webmanifest">
-    <link rel="stylesheet" href="/ThiXX/assets/style.css">
-
-    <script src="/ThiXX/assets/theme-bootstrap.js"></script>
+    <link rel="manifest" href="/THiXX-OTH/manifest.webmanifest">
+    <link rel="stylesheet" href="/THiXX-OTH/assets/style.css">
     
     <meta name="theme-color" content="#FCFCFD">
 </head>
@@ -26,7 +23,6 @@
     <div class="container">
         <header>
             <div class="header-content">
-                <!-- MODIFIED: Added 'othimm' class for specific responsive styling -->
                 <h1 class="logo othimm">
                     <span class="logo-orange">O.</span><span class="logo-gray">Thimm</span>
                 </h1>
@@ -34,7 +30,7 @@
                     <button class="theme-btn" data-theme="dark" data-i18n-title="themeDark" aria-label="Dunkles Design">🌙</button>
                     <button class="theme-btn" data-theme="thixx" data-i18n-title="themeLight" aria-label="Helles Design">☀️</button>
                     <button class="theme-btn" data-theme="customer-brand" data-i18n-title="themeCustomer" aria-label="Kunden-Design">
-                        <img src="/ThiXX/assets/icon-512.png" alt="Kunden-Logo" width="29" height="29">
+                        <img src="/THiXX-OTH/assets/icon-512.png" alt="Kunden-Logo" width="29" height="29">
                     </button>
                 </div>
             </div>
@@ -51,11 +47,9 @@
                 <div id="read-result" class="collapsible">
                     <h2 data-i18n="acceptanceProtocol"></h2>
                     <div id="protocol-card" class="protocol-card">
-                        <!-- Dynamischer Inhalt -->
-                    </div>
+                        </div>
                     <div id="doc-link-container" class="doc-link-container">
-                        <!-- Dynamischer Inhalt (Dokument-Button) -->
-                    </div>
+                        </div>
                     <div id="read-actions" class="read-actions-container hidden">
                         <button id="copy-to-form-btn" class="btn" data-i18n="copyToForm"></button>
                         <details class="raw-data-details">
@@ -147,8 +141,7 @@
                     
                     <div class="legal-actions">
                         <div class="legal-links">
-                            <!-- [KORREKTUR] Tippfehler 'data-i1Gln' zu 'data-i18n' korrigiert -->
-                            <a href="/ThiXX/assets/datenschutz.html" target="_blank" rel="noopener noreferrer" data-i18n="privacyPolicyLink"></a>
+                            <a href="/THiXX-OTH/assets/datenschutz.html" target="_blank" rel="noopener noreferrer" data-i18n="privacyPolicyLink"></a>
                         </div>
                         <button id="check-for-update-btn" class="btn" data-i18n="checkForUpdate"></button>
                     </div>
@@ -163,7 +156,6 @@
             </div>
         </footer>
     </div>
-    <script src="/ThiXX/assets/app.js"></script>
+    <script src="/THiXX-OTH/assets/app.js"></script>
 </body>
 </html>
-

@@ -15,7 +15,7 @@
 
     // --- 3️⃣ config.json direkt synchron laden
     const request = new XMLHttpRequest();
-    request.open('GET', '/ThiXX/config.json', false); // synchron, da sehr klein
+    request.open('GET', '/THiXX-OTH/config.json', false); // synchron, da sehr klein
     request.send(null);
 
     if (request.status === 200) {

@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Configuration and Constants ---
-    const SCOPE = '/ThiXX/';
+    const SCOPE = '/THiXX-OTH/';
     const BASE_URL = new URL('index.html', location.origin + SCOPE).href;
     const CONFIG = {
         COOLDOWN_DURATION: 2000,
@@ -23,23 +23,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Design Templates ---
     const designs = {
-        'thixx_standard': { appName: "ThiXX NFC Tool", short_name: "ThiXX", theme: "dark", lockTheme: false, icons: { icon192: "/ThiXX/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/ThiXX/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#f04e37", secondary: "#6c6b66" } },
+        'thixx_standard': { appName: "ThiXX NFC Tool", short_name: "ThiXX", theme: "dark", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#f04e37", secondary: "#6c6b66" } },
 'peterpohl': { 
     appName: "Peter Pohl NFC Tool", 
     short_name: "Peter Pohl", 
     theme: "customer-brand", 
     lockTheme: false, 
     icons: { 
-        icon192: "/ThiXX/assets/PP-192x192.png", 
-        icon512: "/ThiXX/assets/PP-512x512.png" 
+        icon192: "/THiXX-OTH/assets/PP-192x192.png", 
+        icon512: "/THiXX-OTH/assets/PP-512x512.png" 
     }, 
     brandColors: { 
         primary: "#00457D", 
         secondary: "#FFEC00" 
     } 
 },
-        'sigx': { appName: "THiXX NFC Tool", short_name: "THiXX", theme: "customer-brand", lockTheme: false, icons: { icon192: "/ThiXX/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/ThiXX/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#5865F2", secondary: "#3d3d3d" } },
-        'othimm': { appName: "O.Thimm NFC Tool", short_name: "O.Thimm", theme: "customer-brand", lockTheme: false, icons: { icon192: "/ThiXX/assets/icon-192.png", icon512: "/ThiXX/assets/icon-512.png" }, brandColors: { primary: "#d54b2a", secondary: "#6C6B66" } }
+        'sigx': { appName: "THiXX NFC Tool", short_name: "THiXX", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#5865F2", secondary: "#3d3d3d" } },
+        'othimm': { appName: "O.Thimm NFC Tool", short_name: "O.Thimm", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/icon-192.png", icon512: "/THiXX-OTH/assets/icon-512.png" }, brandColors: { primary: "#d54b2a", secondary: "#6C6B66" } }
     };
 
     // --- DOM Element References ---
@@ -79,19 +79,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Internationalization (i18n) ---
     function t(key, options = {}) { let text = key.split('.').reduce((obj, i) => obj?.[i], appState.translations); if (!text) { console.warn(`Translation not found for key: ${key}`); return key; } if (options.replace) { for (const [placeholder, value] of Object.entries(options.replace)) { text = text.replace(`{${placeholder}}`, value); } } return text; }
-    async function loadTranslations() { const lang = navigator.language.split('-')[0]; const supportedLangs = ['de', 'en', 'es', 'fr']; const selectedLang = supportedLangs.includes(lang) ? lang : 'de'; const path = `/ThiXX/lang/${selectedLang}.json`; try { const response = await fetch(path); if (!response.ok) throw new Error(`Language file for ${selectedLang} not found at ${path}`); appState.translations = await response.json(); document.documentElement.lang = selectedLang; } catch (error) { console.error('Could not load translations, falling back to German.', error); try { const fallbackPath = `/ThiXX/lang/de.json`; const response = await fetch(fallbackPath); appState.translations = await response.json(); document.documentElement.lang = 'de'; } catch (fallbackError) { console.error('Could not load fallback German translations.', fallbackError); } } }
+    async function loadTranslations() { const lang = navigator.language.split('-')[0]; const supportedLangs = ['de', 'en', 'es', 'fr']; const selectedLang = supportedLangs.includes(lang) ? lang : 'de'; const path = `/THiXX-OTH/lang/${selectedLang}.json`; try { const response = await fetch(path); if (!response.ok) throw new Error(`Language file for ${selectedLang} not found at ${path}`); appState.translations = await response.json(); document.documentElement.lang = selectedLang; } catch (error) { console.error('Could not load translations, falling back to German.', error); try { const fallbackPath = `/THiXX-OTH/lang/de.json`; const response = await fetch(fallbackPath); appState.translations = await response.json(); document.documentElement.lang = 'de'; } catch (fallbackError) { console.error('Could not load fallback German translations.', fallbackError); } } }
     function applyTranslations() { document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); }); document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); }); document.title = t('appTitle'); }
 
     // --- Error Handling ---
     class ErrorHandler { static handle(error, context = 'General') { const readableError = this.getReadableError(error); console.error(`[${context}]`, error); showMessage(readableError, 'err'); addLogEntry(`${context}: ${readableError}`, 'err'); return readableError; } static getReadableError(error) { const errorMap = { 'NotAllowedError': 'errors.NotAllowedError', 'NotSupportedError': 'errors.NotSupportedError', 'NotFoundError': 'errors.NotFoundError', 'NotReadableError': 'errors.NotReadableError', 'NetworkError': 'errors.NetworkError', 'AbortError': 'errors.AbortError', 'TimeoutError': 'errors.WriteTimeoutError' }; if (error.name === 'NetworkError' && generateUrlFromForm().length > CONFIG.MAX_PAYLOAD_SIZE) { return t('messages.payloadTooLarge'); } if (errorMap[error.name]) { return t(errorMap[error.name]); } return error.message || t('errors.unknown'); } }
 
     // --- App Initialization ---
-    async function loadConfig() { try { const response = await fetch('/ThiXX/config.json'); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); return await response.json(); } catch (error) { console.warn('Config load failed, using default.', error); return { design: "default" }; } }
+    async function loadConfig() { try { const response = await fetch('/THiXX-OTH/config.json'); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); return await response.json(); } catch (error) { console.warn('Config load failed, using default.', error); return { design: "default" }; } }
     
     async function main() {
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/ThiXX/sw.js', { scope: '/ThiXX/' })
+                navigator.serviceWorker.register('/THiXX-OTH/sw.js', { scope: '/THiXX-OTH/' })
                     .then(registration => {
                         console.log('Service Worker registered:', registration.scope);
                         registration.addEventListener('updatefound', () => {
@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleDocButtonClick(event) { const button = event.target; const url = button.dataset.url; if (navigator.onLine) { window.open(url, '_blank'); button.textContent = t('docOpenOffline'); button.onclick = () => window.open(url, '_blank'); if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ action: 'cache-doc', url: url }); } } else { showMessage(t('docDownloadLater'), 'info'); button.textContent = t('docDownloadPending'); button.disabled = true; } }
 
     // --- UI/UX Functions ---
-    function updateManifest(design) { const manifestLink = document.querySelector('link[rel="manifest"]'); if (!manifestLink) return; const oldHref = manifestLink.href; if (oldHref && oldHref.startsWith('blob:')) { URL.revokeObjectURL(oldHref); } const newManifest = { name: design.appName, short_name: design.short_name, start_url: "/ThiXX/index.html", scope: "/ThiXX/", display: "standalone", background_color: "#ffffff", theme_color: design.brandColors.primary || "#f04e37", orientation: "portrait-primary", icons: [{ src: design.icons.icon192, sizes: "192x192", type: "image/png" }, { src: design.icons.icon512, sizes: "512x512", type: "image/png" }] }; const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' }); manifestLink.href = URL.createObjectURL(blob); }
+    function updateManifest(design) { const manifestLink = document.querySelector('link[rel="manifest"]'); if (!manifestLink) return; const oldHref = manifestLink.href; if (oldHref && oldHref.startsWith('blob:')) { URL.revokeObjectURL(oldHref); } const newManifest = { name: design.appName, short_name: design.short_name, start_url: "/THiXX-OTH/index.html", scope: "/THiXX-OTH/", display: "standalone", background_color: "#ffffff", theme_color: design.brandColors.primary || "#f04e37", orientation: "portrait-primary", icons: [{ src: design.icons.icon192, sizes: "192x192", type: "image/png" }, { src: design.icons.icon512, sizes: "512x512", type: "image/png" }] }; const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' }); manifestLink.href = URL.createObjectURL(blob); }
     function applyTheme(themeName) { const themeButtons = document.querySelectorAll('.theme-btn'); document.documentElement.setAttribute('data-theme', themeName); localStorage.setItem('thixx-theme', themeName); themeButtons.forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === themeName); }); const metaThemeColor = document.querySelector('meta[name="theme-color"]'); if (metaThemeColor) { const colors = { dark: '#0f172a', thixx: '#f8f9fa', 'customer-brand': '#FCFCFD' }; metaThemeColor.setAttribute('content', colors[themeName] || '#FCFCFD'); } }
     function setupReadTabInitialState() { protocolCard.innerHTML = ''; const p = document.createElement('p'); p.className = 'placeholder-text'; p.textContent = t('placeholderRead'); protocolCard.appendChild(p); docLinkContainer.innerHTML = ''; if(readActions) readActions.classList.add('hidden'); }
     function initCollapsibles() { document.querySelectorAll('.collapsible').forEach(el => makeCollapsible(el)) }
@@ -567,10 +567,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
-
-
-
-
-
-
