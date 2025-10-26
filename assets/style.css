@@ -1,3 +1,13 @@
+/* ============================================
+   ANTI-FLICKER: Transitions erst nach Theme-Load
+   ============================================ */
+html:not(.theme-loaded) *,
+html:not(.theme-loaded) *::before,
+html:not(.theme-loaded) *::after {
+    transition: none !important;
+    animation: none !important;
+}
+
 /* Dark Theme (Default) */
 :root, :root[data-theme="dark"] {
     --primary-color: #f04e37;
