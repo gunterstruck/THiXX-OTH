@@ -7,6 +7,9 @@
  */
 (function() {
   try {
+    // --- 0️⃣ SCOPE DEFINITION (WICHTIG: Muss mit index.html übereinstimmen!)
+    const SCOPE = '/THiXX-OTH/'; // ← HIER ANPASSEN für verschiedene Deployments
+    
     // --- 1️⃣ Alte lokale Themes entfernen
     localStorage.removeItem('thixx-theme');
 
@@ -46,7 +49,7 @@
     let selectedDesign = designs['thixx_standard']; // Fallback
 
     const request = new XMLHttpRequest();
-    request.open('GET', '/ThiXX/config.json', false); // synchron
+    request.open('GET', SCOPE + 'config.json', false); // ← Nutzt SCOPE!
     request.send(null);
 
     if (request.status === 200) {
@@ -87,7 +90,7 @@
       try {
         let R = parseInt(color.substring(1, 3), 16);
         let G = parseInt(color.substring(3, 5), 16);
-        let B = parseInt(color.substring(5, 7), 16);
+        let B = parseInt(color.substring(3, 7), 16);
 
         R = Math.min(255, Math.max(0, parseInt(R * (100 + percent) / 100)));
         G = Math.min(255, Math.max(0, parseInt(G * (100 + percent) / 100)));
