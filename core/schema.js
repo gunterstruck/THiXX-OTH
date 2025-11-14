@@ -324,7 +324,9 @@
 
         for (const [key, value] of Object.entries(data)) {
             const field = schema.fields.find(f => f.name === key);
-            if (field && field.shortKey && value) {
+            // Only exclude truly empty values (null, undefined, empty string)
+            // but allow numeric zero (0, 0.0) and boolean false
+            if (field && field.shortKey && value !== null && value !== undefined && value !== '') {
                 params.append(field.shortKey, value);
             }
         }

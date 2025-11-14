@@ -4,11 +4,12 @@
 
 ## Removed Files (2025-01-14)
 
-The following files were removed as they were duplicates from the THiXX-I project:
+The following files were removed from `/core/` as they were duplicates from the THiXX-I project:
 
-- ~~`app.js`~~ - Duplicate of `/assets/app.js`
-- ~~`theme-bootstrap.js`~~ - Duplicate of `/assets/theme-bootstrap.js`
-- ~~`theme.css`~~ - Duplicate of `/assets/style.css`
+- ~~`core/theme-bootstrap.js`~~ - Was duplicate of `/assets/theme-bootstrap.js` (now removed)
+- ~~`core/theme.css`~~ - Was duplicate of `/assets/style.css` (now removed)
+
+**Note:** `/core/app.js` was NOT removed - it remains active as the application controller module.
 
 ## Active Core Modules
 
