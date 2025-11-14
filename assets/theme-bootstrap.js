@@ -19,9 +19,9 @@
     // --- 2️⃣ Design-Definitionen (identisch zu app.js)
     const designs = {
       'thixx_standard': {
-        theme: 'customer-brand',
+        theme: 'dark',
         brandColors: {
-          primary: '#d54b2a',
+          primary: '#f04e37',
           secondary: '#6c6b66'
         }
       },

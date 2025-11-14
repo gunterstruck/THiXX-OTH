@@ -373,12 +373,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Data Processing & Form Handling ---
     /**
-     * Processes URL query parameters and displays NFC data if present
+     * Processes URL hash parameters and displays NFC data if present
      * Automatically decodes short keys to full field names
+     * Uses hash (#) instead of query (?) for iOS NFC compatibility
      * @returns {boolean} True if data was loaded from URL, false otherwise
      */
     function processUrlParameters() {
-        const params = new URLSearchParams(window.location.search);
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
         if (params.toString() === '') return false;
 
         const data = {};
@@ -430,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return data;
     }
 
-    function generateUrlFromForm() { const params = new URLSearchParams(); const formData = getFormData(); for (const [key, value] of Object.entries(formData)) { const shortKey = fieldMap[key]; if (shortKey) params.append(shortKey, value); } return `${CONFIG.BASE_URL}?${params.toString()}`; }
+    function generateUrlFromForm() { const params = new URLSearchParams(); const formData = getFormData(); for (const [key, value] of Object.entries(formData)) { const shortKey = fieldMap[key]; if (shortKey) params.append(shortKey, value); } return `${CONFIG.BASE_URL}#${params.toString()}`; }
     function updatePayloadOnChange() { const writeTab = document.getElementById('write-tab'); if (writeTab?.classList.contains('active')) { const urlPayload = generateUrlFromForm(); payloadOutput.value = urlPayload; const byteCount = new TextEncoder().encode(urlPayload).length; payloadSize.textContent = `${byteCount} / ${CONFIG.MAX_PAYLOAD_SIZE} Bytes`; const isOverLimit = byteCount > CONFIG.MAX_PAYLOAD_SIZE; payloadSize.classList.toggle('limit-exceeded', isOverLimit); nfcStatusBadge.disabled = isOverLimit; } }
     /**
      * Validates form data before NFC write operation
