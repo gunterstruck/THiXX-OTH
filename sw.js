@@ -9,8 +9,8 @@
 
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
-// Cache-Version - erhöht nach Bugfix
-const CORE_CACHE_NAME = 'thixx-oth-core-v9';
+// Cache-Version - erhöht nach PDF-inline-Fix
+const CORE_CACHE_NAME = 'thixx-oth-core-v10';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // Core Assets für Offline-Verfügbarkeit
@@ -73,31 +73,65 @@ self.addEventListener('fetch', (event) => {
     const url = new URL(request.url);
 
     // PDF-Caching-Logik - PDFs werden bei Bedarf gecacht
+    // MODIFIZIERT: PDFs werden mit 'inline' statt 'attachment' ausgeliefert
     if (url.pathname.endsWith('.pdf')) {
         event.respondWith((async () => {
             const allCacheNames = await caches.keys();
             const docCacheNames = allCacheNames.filter(name => name.startsWith(DOC_CACHE_PREFIX));
             const noCorsRequest = new Request(request.url, { mode: 'no-cors' });
+            let sourceNetwork = false;
+            let pdfResponse = null;
 
             // 1. Versuche, die PDF aus allen Dokument-Caches zu finden
             for (const cacheName of docCacheNames) {
                 const cache = await caches.open(cacheName);
-                const cachedResponse = await cache.match(noCorsRequest);
-                if (cachedResponse) {
-                    console.log(`[SW] PDF aus Cache serviert: ${cacheName}`);
-                    return cachedResponse;
+                pdfResponse = await cache.match(noCorsRequest);
+                if (pdfResponse) {
+                    console.log(`[SW] PDF aus Cache gefunden: ${cacheName}`);
+                    break;
                 }
             }
 
             // 2. Nicht im Cache? Vom Netzwerk holen
-            // WICHTIG: PDFs werden nur über die 'message'-Aktion gecacht
-            console.log('[SW] PDF nicht im Cache, hole vom Netzwerk...');
-            try {
-                return await fetch(noCorsRequest);
-            } catch (error) {
-                console.log('[Service Worker] Netzwerk-Fetch für PDF fehlgeschlagen, zeige Offline-Seite.');
-                return await caches.match('/THiXX-OTH/offline.html');
+            if (!pdfResponse) {
+                console.log('[SW] PDF nicht im Cache, hole vom Netzwerk...');
+                try {
+                    pdfResponse = await fetch(noCorsRequest);
+                    sourceNetwork = true; // Merken, dass es vom Netzwerk kam
+                } catch (error) {
+                    console.log('[Service Worker] Netzwerk-Fetch für PDF fehlgeschlagen, zeige Offline-Seite.');
+                    return await caches.match('/THiXX-OTH/offline.html');
+                }
             }
+
+            // 3. WICHTIG: Neue Response erstellen, um Header zu überschreiben
+            // Dies zwingt den Browser, die PDF anzuzeigen statt herunterzuladen.
+            if (pdfResponse) {
+                // Klonen, da der Body nur einmal gelesen werden kann
+                const pdfBody = await pdfResponse.clone().blob();
+
+                // Neue Header erstellen
+                const headers = new Headers({
+                    'Content-Type': 'application/pdf',
+                    'Content-Disposition': 'inline', // 'inline' statt 'attachment'
+                    'Content-Length': pdfBody.size
+                });
+
+                // Bei Netzwerk-Antworten den ETag beibehalten, falls vorhanden
+                if(sourceNetwork && pdfResponse.headers.has('etag')) {
+                     headers.set('ETag', pdfResponse.headers.get('etag'));
+                }
+
+                // Neue Response mit den modifizierten Headern zurückgeben
+                return new Response(pdfBody, {
+                    status: 200,
+                    statusText: 'OK',
+                    headers: headers
+                });
+            }
+
+            // Fallback, sollte nie erreicht werden
+            return await caches.match('/THiXX-OTH/offline.html');
         })());
         return;
     }
