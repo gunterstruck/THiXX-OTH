@@ -1,0 +1,31 @@
+/* Offline Page Specific Styles */
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+}
+
+.offline-container {
+    max-width: 500px;
+    padding: 2rem;
+    background: var(--surface-color);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+}
+
+.offline-container h1 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.offline-container p {
+    margin-bottom: 2rem;
+    color: var(--light-text-color);
+}
+
+.offline-container .btn {
+    display: inline-block;
+    width: auto;
+}
