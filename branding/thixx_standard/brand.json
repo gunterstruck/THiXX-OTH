@@ -13,8 +13,8 @@
     "secondary": "#6c6b66"
   },
   "legal": {
-    "imprint": "https://thixx.de/impressum",
-    "privacy": "https://thixx.de/datenschutz"
+    "imprint": "/THiXX-OTH/branding/thixx_standard/impressum.html",
+    "privacy": "/THiXX-OTH/branding/thixx_standard/datenschutz.html"
   },
   "logo": {
     "type": "text",

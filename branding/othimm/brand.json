@@ -13,8 +13,8 @@
     "secondary": "#6C6B66"
   },
   "legal": {
-    "imprint": "https://www.othimm.de/impressum",
-    "privacy": "https://www.othimm.de/datenschutz"
+    "imprint": "/THiXX-OTH/branding/othimm/impressum.html",
+    "privacy": "/THiXX-OTH/branding/othimm/datenschutz.html"
   },
   "logo": {
     "type": "html",

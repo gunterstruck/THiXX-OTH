@@ -1,0 +1,18 @@
+/**
+ * Peter Pohl Brand CSS
+ * Tenant-specific styles for the Peter Pohl branding
+ */
+
+/* Peter Pohl Logo - Image-based logo styling */
+.logo.peterpohl img {
+    max-height: 60px;
+    width: auto;
+    object-fit: contain;
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 400px) {
+    .logo.peterpohl img {
+        max-height: 45px;
+    }
+}
