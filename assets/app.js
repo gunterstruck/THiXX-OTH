@@ -298,6 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Handle documentation link separately
         docLinkContainer.innerHTML = '';
+
+        // PRÜFUNG 1: Dynamischer Link vom NFC-Tag (Priorität 1)
         if (data['Dokumentation']) {
             const url = data['Dokumentation'];
             if (!isValidDocUrl(url)) {
@@ -320,9 +322,10 @@ document.addEventListener('DOMContentLoaded', () => {
             docLinkContainer.appendChild(button);
 
             // Proaktives Caching: Dokument automatisch im Hintergrund laden
-            if (!isCached && navigator.onLine && navigator.serviceWorker && navigator.serviceWorker.controller) {
+            // KORREKTUR: Verwende robustPostMessage
+            if (!isCached && navigator.onLine && 'serviceWorker' in navigator) {
                 try {
-                    navigator.serviceWorker.controller.postMessage({
+                    await robustPostMessage({
                         action: 'cache-doc',
                         url: url
                     });
@@ -330,6 +333,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     addLogEntry(t('messages.docCachingStarted') || 'Dokumentation wird im Hintergrund geladen...', 'info');
                 } catch (error) {
                     console.warn('[App] Proaktives Caching fehlgeschlagen:', error);
+                }
+            }
+        }
+        // NEU: FALLBACK (Priorität 2) - Logik von THiXX-I
+        else {
+            // Kein dynamischer Link auf dem Tag, suche statische Links in brand.json
+            const documentLinks = window.AppController.getDocumentLinks();
+
+            if (documentLinks && documentLinks.length > 0) {
+                for (const link of documentLinks) {
+                    if (!link.url || !link.labelKey) continue; // Ignoriere ungültige Einträge
+
+                    const button = document.createElement('button');
+                    button.className = 'btn doc-link-btn';
+                    button.dataset.url = link.url; // URL für den Handler setzen
+                    button.textContent = t(link.labelKey); // Label aus brand.json übersetzen
+
+                    const isCached = await isUrlCached(link.url);
+
+                    if (isCached) {
+                        button.textContent = t('docOpenOffline');
+                        button.onclick = () => window.open(link.url, '_blank');
+                    } else {
+                        button.textContent = navigator.onLine ? t('docDownload') : t('docDownloadLater');
+                        button.addEventListener('click', handleDocButtonClick);
+                    }
+                    docLinkContainer.appendChild(button);
+
+                    // Proaktives Caching für statische Links (falls konfiguriert)
+                    // KORREKTUR: Verwende robustPostMessage
+                    if (link.cacheOffline && !isCached && navigator.onLine && 'serviceWorker' in navigator) {
+                        try {
+                            await robustPostMessage({
+                                action: 'cache-doc',
+                                url: link.url
+                            });
+                            console.log('[App] Proaktives Caching für statisches Dokument gestartet:', link.url);
+                            addLogEntry(t('messages.docCachingStarted') || 'Dokumentation wird im Hintergrund geladen...', 'info');
+                        } catch (error) {
+                            console.warn('[App] Proaktives Caching für statisches Dokument fehlgeschlagen:', error);
+                        }
+                    }
                 }
             }
         }
@@ -445,6 +490,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function addLogEntry(message, type = 'info') { const timestamp = new Date().toLocaleTimeString(document.documentElement.lang, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); appState.eventLog.unshift({ timestamp, message, type }); if (appState.eventLog.length > CONFIG.MAX_LOG_ENTRIES) appState.eventLog.pop(); renderLog(); }
     function renderLog() { if (!eventLogOutput) return; eventLogOutput.innerHTML = ''; appState.eventLog.forEach(entry => { const div = document.createElement('div'); div.className = `log-entry ${entry.type}`; const timestamp = document.createElement('span'); timestamp.className = 'log-timestamp'; timestamp.textContent = entry.timestamp; const message = document.createTextNode(` ${entry.message}`); div.appendChild(timestamp); div.appendChild(message); eventLogOutput.appendChild(div); }); }
 
+    /**
+     * Sendet eine Nachricht robust an den Service Worker und wartet,
+     * bis dieser bereit ist (controller ist evtl. null bei Seiten-Neuladen).
+     */
+    async function robustPostMessage(message) {
+        if (!('serviceWorker' in navigator)) return;
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            if (registration.active) {
+                registration.active.postMessage(message);
+            } else {
+                console.warn('[App] Service Worker ist bereit, aber nicht aktiv.');
+            }
+        } catch (error) {
+            console.error('[App] Robuste postMessage fehlgeschlagen:', error);
+        }
+    }
+
     // --- Service Worker & Cache ---
     async function isUrlCached(url) {
         if (!('caches' in window)) return false;
@@ -549,12 +612,17 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent = t('docOpenOffline');
             button.onclick = () => window.open(url, '_blank');
 
-            if (navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({
+            // KORREKTUR: Verwende robustPostMessage
+            try {
+                await robustPostMessage({
                     action: 'cache-doc',
                     url: url
                 });
+                console.log('[App] Caching nach Klick gestartet:', url);
+            } catch (error) {
+                console.warn('[App] Caching nach Klick fehlgeschlagen:', error);
             }
+
         } else {
             // Offline: Try Background Sync API (Android) or fallback to localStorage (iOS)
             const supportsBackgroundSync = 'serviceWorker' in navigator && 'SyncManager' in window;
