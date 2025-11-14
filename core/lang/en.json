@@ -45,6 +45,10 @@
   "updateAvailable": "A new update is available!",
   "updateReload": "Reload",
   "placeholderRead": "Please hold an NFC tag to your device to display the data here.",
+  "docOpenOffline": "Open Manual (Offline)",
+  "docDownload": "Load & Open Manual",
+  "docDownloadLater": "Download (Internet required)",
+  "docDownloadPending": "Download will start when online",
   "status": {
     "iosRead": "Hold tag to device to read",
     "startWriting": "Ready. Tap to write.",
@@ -65,6 +69,10 @@
     "saveSuccess": "Form data saved as file.",
     "loadSuccess": "Data loaded from file.",
     "noDataToCopy": "No data available to copy.",
+    "docCachingStarted": "Documentation is being saved for offline use...",
+    "docSyncScheduled": "Download will start automatically when online",
+    "docDownloadQueued": "Download queued - will run when you go online",
+    "docCachedOnline": "Documentation was successfully cached in the background",
     "payloadTooLarge": "Data is too large for a standard NFC tag!",
     "updateChecking": "Checking for updates...",
     "noUpdateFound": "No new update found."

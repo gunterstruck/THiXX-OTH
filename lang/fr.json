@@ -59,7 +59,7 @@
         "scanToReadInfo": "Pour lire, approchez simplement l'étiquette de l'appareil. Aucun clic n'est nécessaire.",
         "writeAttempt": "Tentative d'écriture {attempt} sur {total}. Gardez le tag sur l'appareil...",
         "writeSuccess": "Tag NFC écrit avec succès !",
-        "readSuccess": "Données lues avec succès ! ",
+        "readSuccess": "Données lues avec succès !",
         "copySuccess": "Données copiées dans le formulaire.",
         "saveSuccess": "Données du formulaire enregistrées en tant que fichier.",
         "loadSuccess": "Données chargées depuis le fichier.",

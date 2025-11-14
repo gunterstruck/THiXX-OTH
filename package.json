@@ -1,0 +1,21 @@
+{
+  "name": "thixx-oth",
+  "version": "1.0.0",
+  "description": "THiXX NFC Tool - Multi-Tenant PWA for NFC tag reading and writing",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "keywords": [
+    "nfc",
+    "pwa",
+    "multi-tenant"
+  ],
+  "author": "THiXX",
+  "license": "MIT",
+  "devDependencies": {
+    "vitest": "^1.0.0"
+  },
+  "type": "module"
+}
