@@ -417,7 +417,7 @@
 
         groups.forEach(group => {
             // MODIFIZIERT: Filtert 'Doc' (Dokumentation) hier heraus.
-            // Es wird separat von renderDocumentLinks() als Button behandelt.
+            // Es wird separat in assets/app.js (displayParsedData) als Button behandelt.
             const groupFields = schema.fields.filter(f => f.group === group.id && !f.deprecated && f.shortKey !== 'Doc');
             const fragment = document.createDocumentFragment();
 
