@@ -202,3 +202,51 @@ self.addEventListener('message', (event) => {
     }
 });
 
+/**
+ * Background Sync Event Handler
+ * Automatically caches documents when the device comes back online
+ * Supports Android Chrome's native Background Sync API
+ */
+self.addEventListener('sync', (event) => {
+    console.log('[SW] Sync event received:', event.tag);
+
+    // Check if this is a document cache sync event
+    if (event.tag.startsWith('cache-doc:')) {
+        // Extract URL from the tag name
+        const urlToCache = event.tag.substring('cache-doc:'.length);
+
+        // Tenant is 'default' for THiXX-OTH
+        const tenant = 'default';
+        const docCacheName = `${DOC_CACHE_PREFIX}-${tenant}`;
+
+        console.log(`[SW Sync] Attempting to cache ${urlToCache} for tenant ${tenant}`);
+
+        // Tell the browser to wait for the caching operation to complete
+        event.waitUntil(
+            caches.open(docCacheName)
+                .then(cache => {
+                    console.log(`[SW Sync] Caching ${urlToCache} in ${docCacheName}`);
+                    return cache.add(new Request(urlToCache, { mode: 'no-cors' }));
+                })
+                .then(() => {
+                    console.log(`[SW Sync] Successfully cached ${urlToCache}`);
+                    // Notify all clients that the document was cached
+                    return self.clients.matchAll();
+                })
+                .then(clients => {
+                    clients.forEach(client => {
+                        client.postMessage({
+                            type: 'doc-cached',
+                            url: urlToCache
+                        });
+                    });
+                })
+                .catch(err => {
+                    console.error('[SW Sync] Failed to cache document:', urlToCache, err);
+                    // Throw error to retry sync later
+                    throw err;
+                })
+        );
+    }
+});
+

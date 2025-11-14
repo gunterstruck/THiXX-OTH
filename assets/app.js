@@ -171,6 +171,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                      window.location.reload();
                 });
+
+                // Listen for messages from service worker (background sync notifications)
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'doc-cached') {
+                        console.log('[App] Document cached in background:', event.data.url);
+                        showMessage(t('messages.docCachedOnline') || 'Dokumentation wurde im Hintergrund geladen', 'ok');
+
+                        // Update button if it exists on current page
+                        const button = document.querySelector(`.doc-link-btn[data-url="${event.data.url}"]`);
+                        if (button) {
+                            button.textContent = t('docOpenOffline');
+                            button.disabled = false;
+                            button.onclick = () => window.open(event.data.url, '_blank');
+                        }
+                    }
+                });
             });
         }
 
@@ -182,7 +198,20 @@ document.addEventListener('DOMContentLoaded', () => {
         setTodaysDate();
         checkNfcSupport();
         initCollapsibles();
-        
+
+        // Set up online/offline handlers for pending downloads (iOS fallback)
+        window.addEventListener('online', processPendingDownloads);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && navigator.onLine) {
+                processPendingDownloads();
+            }
+        });
+
+        // Process any pending downloads on startup if online
+        if (navigator.onLine) {
+            processPendingDownloads();
+        }
+
         if (!processUrlParameters()) {
             setupReadTabInitialState();
             switchTab('read-tab');
@@ -418,7 +447,133 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Service Worker & Cache ---
     async function isUrlCached(url) { if (!('caches' in window)) return false; try { const cache = await caches.open('thixx-docs-v1'); const request = new Request(url, { mode: 'no-cors' }); const response = await cache.match(request); return !!response; } catch (error) { console.error("Cache check failed:", error); return false; } }
-    async function handleDocButtonClick(event) { const button = event.target; const url = button.dataset.url; if (navigator.onLine) { window.open(url, '_blank'); button.textContent = t('docOpenOffline'); button.onclick = () => window.open(url, '_blank'); if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ action: 'cache-doc', url: url }); } } else { showMessage(t('docDownloadLater'), 'info'); button.textContent = t('docDownloadPending'); button.disabled = true; } }
+
+    /**
+     * Stores a pending document download in localStorage for iOS fallback
+     * @param {string} url - The document URL to cache later
+     */
+    function storePendingDownload(url) {
+        try {
+            const pending = JSON.parse(localStorage.getItem('thixx-pending-downloads') || '[]');
+            if (!pending.includes(url)) {
+                pending.push(url);
+                localStorage.setItem('thixx-pending-downloads', JSON.stringify(pending));
+                console.log('[App] Stored pending download:', url);
+            }
+        } catch (error) {
+            console.error('[App] Failed to store pending download:', error);
+        }
+    }
+
+    /**
+     * Removes a URL from pending downloads
+     * @param {string} url - The URL to remove
+     */
+    function removePendingDownload(url) {
+        try {
+            const pending = JSON.parse(localStorage.getItem('thixx-pending-downloads') || '[]');
+            const filtered = pending.filter(pendingUrl => pendingUrl !== url);
+            localStorage.setItem('thixx-pending-downloads', JSON.stringify(filtered));
+            console.log('[App] Removed pending download:', url);
+        } catch (error) {
+            console.error('[App] Failed to remove pending download:', error);
+        }
+    }
+
+    /**
+     * Processes pending downloads when the app comes online
+     * This is the iOS fallback for Background Sync API
+     */
+    async function processPendingDownloads() {
+        if (!navigator.onLine || !navigator.serviceWorker?.controller) return;
+
+        try {
+            const pending = JSON.parse(localStorage.getItem('thixx-pending-downloads') || '[]');
+            if (pending.length === 0) return;
+
+            console.log('[App] Processing pending downloads:', pending);
+
+            for (const url of pending) {
+                try {
+                    // Send cache request to service worker
+                    navigator.serviceWorker.controller.postMessage({
+                        action: 'cache-doc',
+                        url: url
+                    });
+
+                    // Wait a bit to ensure caching completes
+                    await new Promise(resolve => setTimeout(resolve, 500));
+
+                    // Remove from pending list
+                    removePendingDownload(url);
+
+                    console.log('[App] Successfully cached pending download:', url);
+                    addLogEntry(t('messages.docCachedOnline') || 'Dokumentation wurde im Hintergrund geladen', 'ok');
+                } catch (error) {
+                    console.error('[App] Failed to cache pending download:', url, error);
+                }
+            }
+        } catch (error) {
+            console.error('[App] Error processing pending downloads:', error);
+        }
+    }
+
+    /**
+     * Handles document button clicks with Background Sync support
+     * Uses native Background Sync API on Android and localStorage fallback on iOS
+     */
+    async function handleDocButtonClick(event) {
+        const button = event.target;
+        const url = button.dataset.url;
+
+        if (navigator.onLine) {
+            // Online: Open document and cache it
+            window.open(url, '_blank');
+            button.textContent = t('docOpenOffline');
+            button.onclick = () => window.open(url, '_blank');
+
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    action: 'cache-doc',
+                    url: url
+                });
+            }
+        } else {
+            // Offline: Try Background Sync API (Android) or fallback to localStorage (iOS)
+            const supportsBackgroundSync = 'serviceWorker' in navigator && 'SyncManager' in window;
+
+            if (supportsBackgroundSync) {
+                // Android: Use Background Sync API
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    await registration.sync.register(`cache-doc:${url}`);
+
+                    showMessage(t('messages.docSyncScheduled'), 'info');
+                    button.textContent = t('docDownloadPending');
+                    button.disabled = true;
+
+                    console.log('[App] Background sync registered for:', url);
+                    addLogEntry(t('messages.docSyncScheduled') || 'Download wird bei Online-Verbindung gestartet', 'info');
+                } catch (error) {
+                    console.error('[App] Background sync registration failed:', error);
+                    // Fallback to iOS method
+                    storePendingDownload(url);
+                    showMessage(t('messages.docDownloadQueued'), 'info');
+                    button.textContent = t('docDownloadPending');
+                    button.disabled = true;
+                }
+            } else {
+                // iOS: Use localStorage fallback
+                storePendingDownload(url);
+                showMessage(t('messages.docDownloadQueued'), 'info');
+                button.textContent = t('docDownloadPending');
+                button.disabled = true;
+
+                console.log('[App] Document queued for download (iOS fallback):', url);
+                addLogEntry(t('messages.docDownloadQueued') || 'Download vorgemerkt', 'info');
+            }
+        }
+    }
 
     // --- UI/UX Functions ---
     function updateManifest(design) { const manifestLink = document.querySelector('link[rel="manifest"]'); if (!manifestLink) return; const oldHref = manifestLink.href; if (oldHref && oldHref.startsWith('blob:')) { URL.revokeObjectURL(oldHref); } const newManifest = { name: design.appName, short_name: design.short_name, start_url: "/THiXX-OTH/index.html", scope: "/THiXX-OTH/", display: "standalone", background_color: "#ffffff", theme_color: design.brandColors.primary || "#f04e37", orientation: "portrait-primary", icons: [{ src: design.icons.icon192, sizes: "192x192", type: "image/png" }, { src: design.icons.icon512, sizes: "512x512", type: "image/png" }] }; const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' }); manifestLink.href = URL.createObjectURL(blob); }
