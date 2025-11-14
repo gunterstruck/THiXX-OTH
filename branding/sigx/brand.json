@@ -13,8 +13,8 @@
     "secondary": "#3d3d3d"
   },
   "legal": {
-    "imprint": "https://thixx.de/impressum",
-    "privacy": "https://thixx.de/datenschutz"
+    "imprint": "/THiXX-OTH/branding/sigx/impressum.html",
+    "privacy": "/THiXX-OTH/branding/sigx/datenschutz.html"
   },
   "logo": {
     "type": "text",

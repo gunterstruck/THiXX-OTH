@@ -13,8 +13,8 @@
     "secondary": "#FFEC00"
   },
   "legal": {
-    "imprint": "https://www.peterpohl.de/impressum",
-    "privacy": "https://www.peterpohl.de/datenschutz"
+    "imprint": "/THiXX-OTH/branding/peterpohl/impressum.html",
+    "privacy": "/THiXX-OTH/branding/peterpohl/datenschutz.html"
   },
   "logo": {
     "type": "image",

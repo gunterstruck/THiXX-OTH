@@ -1,0 +1,33 @@
+/**
+ * ThiXX Standard Brand CSS
+ * Tenant-specific styles for the ThiXX Standard branding
+ */
+
+/* THiXX Logo Specifics - Custom "i" letter design */
+.logo.thixx .i-letter {
+    position: relative;
+    width: 0.25em;
+    height: 1em;
+    background-color: var(--secondary-color);
+    display: inline-block;
+    margin: 0 0.05em;
+    border-radius: 0.05em;
+}
+
+.logo.thixx .i-letter .i-dot {
+    position: absolute;
+    top: -0.3em;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0.25em;
+    height: 0.25em;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 480px) {
+    h1.logo.thixx {
+        font-size: 1.8rem;
+    }
+}

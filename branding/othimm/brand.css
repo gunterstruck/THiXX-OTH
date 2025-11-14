@@ -1,0 +1,12 @@
+/**
+ * O.Thimm Brand CSS
+ * Tenant-specific styles for the O.Thimm branding
+ */
+
+/* O.Thimm Logo - Responsive adjustments for small screens */
+@media (max-width: 400px) {
+    h1.logo.othimm {
+        font-size: 1.6rem;
+        letter-spacing: -0.05em; /* Slightly reduce letter spacing */
+    }
+}

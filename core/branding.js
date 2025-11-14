@@ -83,6 +83,34 @@
     }
 
     /**
+     * Loads tenant-specific CSS file (brand.css)
+     * @param {string} tenantId - Tenant ID
+     */
+    function loadBrandCSS(tenantId) {
+        if (!tenantId) return;
+
+        // Remove any existing brand CSS
+        const existingBrandCSS = document.getElementById('brand-css');
+        if (existingBrandCSS) {
+            existingBrandCSS.remove();
+        }
+
+        // Create and append new brand CSS link
+        const link = document.createElement('link');
+        link.id = 'brand-css';
+        link.rel = 'stylesheet';
+        link.href = `${REPO_PATH}branding/${tenantId}/brand.css`;
+
+        // Add error handler in case brand.css doesn't exist
+        link.onerror = () => {
+            console.log(`[Branding] No brand.css found for tenant: ${tenantId} (this is optional)`);
+        };
+
+        document.head.appendChild(link);
+        console.log(`[Branding] Loading brand CSS for tenant: ${tenantId}`);
+    }
+
+    /**
      * Applies brand configuration to the UI
      * @param {Object} brand - Brand configuration object
      */
@@ -90,6 +118,9 @@
         if (!brand) return;
 
         console.log('[Branding] Applying brand configuration');
+
+        // Load tenant-specific CSS
+        loadBrandCSS(Branding.tenantId);
 
         // Apply theme
         const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -175,13 +206,63 @@
         const legalContainer = document.getElementById('legal-info');
         if (!legalContainer) return;
 
-        // This will be enhanced when legal info rendering is needed
-        // For now, store in data attributes
+        // Store URLs in data attributes
         if (legalConfig.imprint) {
             legalContainer.dataset.imprintUrl = legalConfig.imprint;
         }
         if (legalConfig.privacy) {
             legalContainer.dataset.privacyUrl = legalConfig.privacy;
+        }
+
+        // Update privacy link if it exists
+        const privacyLink = legalContainer.querySelector('a[data-i18n="privacyPolicyLink"]');
+        if (privacyLink && legalConfig.privacy) {
+            privacyLink.href = legalConfig.privacy;
+        }
+
+        // Load and display imprint content if it's a local file
+        if (legalConfig.imprint && !legalConfig.imprint.startsWith('http')) {
+            loadImprintContent(legalConfig.imprint);
+        } else {
+            // For external URLs, create a link
+            updateImprintLink(legalConfig.imprint);
+        }
+    }
+
+    /**
+     * Loads imprint content from a local HTML file
+     * @param {string} filePath - Path to the imprint HTML file
+     */
+    async function loadImprintContent(filePath) {
+        try {
+            const response = await fetch(filePath);
+            if (!response.ok) {
+                console.warn(`[Branding] Could not load imprint from: ${filePath}`);
+                return;
+            }
+
+            const html = await response.text();
+            const imprintContainer = document.getElementById('imprint-content');
+            if (imprintContainer) {
+                imprintContainer.innerHTML = html;
+                console.log('[Branding] Imprint content loaded');
+            }
+        } catch (error) {
+            console.error('[Branding] Error loading imprint content:', error);
+        }
+    }
+
+    /**
+     * Updates imprint to show as external link
+     * @param {string} url - External URL to imprint
+     */
+    function updateImprintLink(url) {
+        const imprintContainer = document.getElementById('imprint-content');
+        if (imprintContainer && url) {
+            imprintContainer.innerHTML = `
+                <p><strong data-i18n="imprintTitle">Impressum</strong><br>
+                <a href="${url}" target="_blank" rel="noopener noreferrer" data-i18n="imprintLink">Impressum anzeigen</a></p>
+            `;
         }
     }
 
