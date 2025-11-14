@@ -446,7 +446,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLog() { if (!eventLogOutput) return; eventLogOutput.innerHTML = ''; appState.eventLog.forEach(entry => { const div = document.createElement('div'); div.className = `log-entry ${entry.type}`; const timestamp = document.createElement('span'); timestamp.className = 'log-timestamp'; timestamp.textContent = entry.timestamp; const message = document.createTextNode(` ${entry.message}`); div.appendChild(timestamp); div.appendChild(message); eventLogOutput.appendChild(div); }); }
 
     // --- Service Worker & Cache ---
-    async function isUrlCached(url) { if (!('caches' in window)) return false; try { const cache = await caches.open('thixx-docs-v1'); const request = new Request(url, { mode: 'no-cors' }); const response = await cache.match(request); return !!response; } catch (error) { console.error("Cache check failed:", error); return false; } }
+    async function isUrlCached(url) {
+        if (!('caches' in window)) return false;
+
+        // KORREKTUR: Cache-Name muss mit Service Worker (sw.js) übereinstimmen
+        // Der sw.js verwendet DOC_CACHE_PREFIX = 'thixx-oth-docs'
+        // und den Fallback-Mandanten 'default'
+        const correctCacheName = 'thixx-oth-docs-default';
+
+        try {
+            const cache = await caches.open(correctCacheName);
+            const request = new Request(url, { mode: 'no-cors' });
+            const response = await cache.match(request);
+            return !!response;
+        } catch (error) {
+            console.error("Cache check failed:", error);
+            return false;
+        }
+    }
 
     /**
      * Stores a pending document download in localStorage for iOS fallback
