@@ -206,6 +206,140 @@ describe('SchemaEngine.createFieldIdentifier (via buildForm and getFieldIdentifi
 });
 
 /**
+ * TESTS FOR getFieldNameByIdentifier (inverse mapping)
+ * Tests the reverse lookup: identifier -> field name
+ */
+describe('SchemaEngine.getFieldNameByIdentifier', () => {
+    let form;
+
+    beforeEach(() => {
+        form = document.createElement('form');
+        document.body.appendChild(form);
+    });
+
+    afterEach(() => {
+        if (form && form.parentNode) {
+            form.parentNode.removeChild(form);
+        }
+    });
+
+    test('should return correct field name for simple identifier', () => {
+        const schema = {
+            fields: [
+                { name: 'HK-Nr', shortKey: 'HK', type: 'text', group: 'main', required: false }
+            ],
+            groups: [
+                { id: 'main', labelKey: 'acceptanceProtocol', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        // Forward mapping: name -> identifier
+        const identifier = window.SchemaEngine.getFieldIdentifierByName('HK-Nr');
+        expect(identifier).toBe('hk');
+
+        // Reverse mapping: identifier -> name
+        const fieldName = window.SchemaEngine.getFieldNameByIdentifier(identifier);
+        expect(fieldName).toBe('HK-Nr');
+    });
+
+    test('should return correct field name for Umlaute', () => {
+        const schema = {
+            fields: [
+                { name: 'Wächter', shortKey: 'Wäch', type: 'number', unit: '°C', group: 'control', required: false }
+            ],
+            groups: [
+                { id: 'control', labelKey: 'groupControl', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        const identifier = window.SchemaEngine.getFieldIdentifierByName('Wächter');
+        expect(identifier).toBe('wach');
+
+        const fieldName = window.SchemaEngine.getFieldNameByIdentifier('wach');
+        expect(fieldName).toBe('Wächter');
+    });
+
+    test('should return correct field names for collision-resolved identifiers', () => {
+        const schema = {
+            fields: [
+                { name: 'HK-Nr', shortKey: 'HK', type: 'text', group: 'main', required: false },
+                { name: 'Hauskanal', shortKey: 'HK', type: 'text', group: 'main', required: false },
+                { name: 'Hauptkanal', shortKey: 'HK', type: 'number', group: 'main', required: false }
+            ],
+            groups: [
+                { id: 'main', labelKey: 'acceptanceProtocol', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        // Get all identifiers (should be: hk, hk-1, hk-2)
+        const id1 = window.SchemaEngine.getFieldIdentifierByName('HK-Nr');
+        const id2 = window.SchemaEngine.getFieldIdentifierByName('Hauskanal');
+        const id3 = window.SchemaEngine.getFieldIdentifierByName('Hauptkanal');
+
+        expect(id1).toBe('hk');
+        expect(id2).toBe('hk-1');
+        expect(id3).toBe('hk-2');
+
+        // Reverse mappings should all return correct original names
+        expect(window.SchemaEngine.getFieldNameByIdentifier('hk')).toBe('HK-Nr');
+        expect(window.SchemaEngine.getFieldNameByIdentifier('hk-1')).toBe('Hauskanal');
+        expect(window.SchemaEngine.getFieldNameByIdentifier('hk-2')).toBe('Hauptkanal');
+    });
+
+    test('should return null for unknown identifier', () => {
+        const schema = {
+            fields: [
+                { name: 'HK-Nr', shortKey: 'HK', type: 'text', group: 'main', required: false }
+            ],
+            groups: [
+                { id: 'main', labelKey: 'acceptanceProtocol', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        const fieldName = window.SchemaEngine.getFieldNameByIdentifier('unknown-id');
+        expect(fieldName).toBeNull();
+    });
+
+    test('should handle bidirectional mapping for spaces and special characters', () => {
+        const schema = {
+            fields: [
+                { name: 'geprüft von', shortKey: 'Chk', type: 'text', group: 'footer', required: false },
+                { name: 'Projekt-Nr.', shortKey: 'Proj', type: 'text', group: 'footer', required: false }
+            ],
+            groups: [
+                { id: 'footer', labelKey: 'groupFooter', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        // Forward mappings
+        const id1 = window.SchemaEngine.getFieldIdentifierByName('geprüft von');
+        const id2 = window.SchemaEngine.getFieldIdentifierByName('Projekt-Nr.');
+
+        expect(id1).toBe('chk');
+        expect(id2).toBe('proj');
+
+        // Reverse mappings should preserve original names
+        expect(window.SchemaEngine.getFieldNameByIdentifier('chk')).toBe('geprüft von');
+        expect(window.SchemaEngine.getFieldNameByIdentifier('proj')).toBe('Projekt-Nr.');
+    });
+});
+
+/**
  * TESTS FOR encodeUrl
  */
 describe('SchemaEngine.encodeUrl', () => {
