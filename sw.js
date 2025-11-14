@@ -9,25 +9,25 @@
 
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
-// Cache-Version - erhöht nach PDF-inline-Fix
-const CORE_CACHE_NAME = 'thixx-oth-core-v13';
+// Cache-Version - erhöht nach Robustness-Improvements (REPO_PATH, opaque response handling)
+const CORE_CACHE_NAME = 'thixx-oth-core-v14';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // Core Assets für Offline-Verfügbarkeit
 const CORE_ASSETS = [
-    '/THiXX-OTH/offline.html',
-    '/THiXX-OTH/index.html',
-    '/THiXX-OTH/style.css',
-    '/THiXX-OTH/assets/style.css',
-    '/THiXX-OTH/assets/offline.css',
-    '/THiXX-OTH/assets/datenschutz.css',
-    '/THiXX-OTH/assets/app.js',
-    '/THiXX-OTH/assets/theme-bootstrap.js',
-    '/THiXX-OTH/assets/datenschutz.html',
-    '/THiXX-OTH/lang/de.json',
-    '/THiXX-OTH/lang/en.json',
-    '/THiXX-OTH/lang/es.json',
-    '/THiXX-OTH/lang/fr.json'
+    `${REPO_PATH}offline.html`,
+    `${REPO_PATH}index.html`,
+    `${REPO_PATH}style.css`,
+    `${REPO_PATH}assets/style.css`,
+    `${REPO_PATH}assets/offline.css`,
+    `${REPO_PATH}assets/datenschutz.css`,
+    `${REPO_PATH}assets/app.js`,
+    `${REPO_PATH}assets/theme-bootstrap.js`,
+    `${REPO_PATH}assets/datenschutz.html`,
+    `${REPO_PATH}lang/de.json`,
+    `${REPO_PATH}lang/en.json`,
+    `${REPO_PATH}lang/es.json`,
+    `${REPO_PATH}lang/fr.json`
 ];
 
 async function safeCacheAddAll(cache, urls) {
@@ -74,18 +74,18 @@ self.addEventListener('fetch', (event) => {
 
     // PDF-Caching-Logik - PDFs werden bei Bedarf gecacht
     // MODIFIZIERT: PDFs werden mit 'inline' statt 'attachment' ausgeliefert
+    // SICHERHEIT: Robuster Umgang mit cross-origin PDFs (opaque responses)
     if (url.pathname.endsWith('.pdf')) {
         event.respondWith((async () => {
             const allCacheNames = await caches.keys();
             const docCacheNames = allCacheNames.filter(name => name.startsWith(DOC_CACHE_PREFIX));
-            const noCorsRequest = new Request(request.url, { mode: 'no-cors' });
-            let sourceNetwork = false;
             let pdfResponse = null;
 
             // 1. Versuche, die PDF aus allen Dokument-Caches zu finden
+            // Cache-Match funktioniert mit beiden Request-Typen
             for (const cacheName of docCacheNames) {
                 const cache = await caches.open(cacheName);
-                pdfResponse = await cache.match(noCorsRequest);
+                pdfResponse = await cache.match(request);
                 if (pdfResponse) {
                     console.log(`[SW] PDF aus Cache gefunden: ${cacheName}`);
                     break;
@@ -96,42 +96,56 @@ self.addEventListener('fetch', (event) => {
             if (!pdfResponse) {
                 console.log('[SW] PDF nicht im Cache, hole vom Netzwerk...');
                 try {
-                    pdfResponse = await fetch(noCorsRequest);
-                    sourceNetwork = true; // Merken, dass es vom Netzwerk kam
+                    // Verwende originalen Request (keine mode-Änderung)
+                    pdfResponse = await fetch(request);
                 } catch (error) {
                     console.log('[Service Worker] Netzwerk-Fetch für PDF fehlgeschlagen, zeige Offline-Seite.');
-                    return await caches.match('/THiXX-OTH/offline.html');
+                    return await caches.match(`${REPO_PATH}offline.html`);
                 }
             }
 
-            // 3. WICHTIG: Neue Response erstellen, um Header zu überschreiben
-            // Dies zwingt den Browser, die PDF anzuzeigen statt herunterzuladen.
+            // 3. WICHTIG: Prüfe, ob Response opaque ist (cross-origin no-cors)
+            if (pdfResponse && pdfResponse.type === 'opaque') {
+                // Opaque Response: Kann nicht gelesen/modifiziert werden
+                // Gebe sie direkt zurück (Content-Disposition kann nicht überschrieben werden)
+                console.log('[SW] PDF ist cross-origin (opaque), gebe unmodifiziert zurück');
+                return pdfResponse;
+            }
+
+            // 4. Same-Origin PDF: Header überschreiben für inline-Anzeige
+            // Dies zwingt den Browser, die PDF anzuzeigen statt herunterzuladen
             if (pdfResponse) {
-                // Klonen, da der Body nur einmal gelesen werden kann
-                const pdfBody = await pdfResponse.clone().blob();
+                try {
+                    // Klonen, da der Body nur einmal gelesen werden kann
+                    const pdfBody = await pdfResponse.clone().blob();
 
-                // Neue Header erstellen
-                const headers = new Headers({
-                    'Content-Type': 'application/pdf',
-                    'Content-Disposition': 'inline', // 'inline' statt 'attachment'
-                    'Content-Length': pdfBody.size
-                });
+                    // Neue Header erstellen
+                    const headers = new Headers({
+                        'Content-Type': 'application/pdf',
+                        'Content-Disposition': 'inline', // 'inline' statt 'attachment'
+                        'Content-Length': pdfBody.size
+                    });
 
-                // Bei Netzwerk-Antworten den ETag beibehalten, falls vorhanden
-                if(sourceNetwork && pdfResponse.headers.has('etag')) {
-                     headers.set('ETag', pdfResponse.headers.get('etag'));
+                    // ETag beibehalten, falls vorhanden
+                    if (pdfResponse.headers.has('etag')) {
+                        headers.set('ETag', pdfResponse.headers.get('etag'));
+                    }
+
+                    // Neue Response mit den modifizierten Headern zurückgeben
+                    return new Response(pdfBody, {
+                        status: 200,
+                        statusText: 'OK',
+                        headers: headers
+                    });
+                } catch (error) {
+                    // Fallback: Bei Fehler beim Lesen des Body, gebe Original zurück
+                    console.warn('[SW] Konnte PDF-Body nicht lesen, gebe Original zurück:', error);
+                    return pdfResponse;
                 }
-
-                // Neue Response mit den modifizierten Headern zurückgeben
-                return new Response(pdfBody, {
-                    status: 200,
-                    statusText: 'OK',
-                    headers: headers
-                });
             }
 
             // Fallback, sollte nie erreicht werden
-            return await caches.match('/THiXX-OTH/offline.html');
+            return await caches.match(`${REPO_PATH}offline.html`);
         })());
         return;
     }
@@ -154,7 +168,7 @@ self.addEventListener('fetch', (event) => {
                     }
 
                     console.log('[Service Worker] Navigate fetch failed for legal page, falling back to offline page.');
-                    return await caches.match('/THiXX-OTH/offline.html');
+                    return await caches.match(`${REPO_PATH}offline.html`);
                 }
             })());
             return;
@@ -176,14 +190,14 @@ self.addEventListener('fetch', (event) => {
                 return networkResponse;
             } catch (error) {
                 console.log('[Service Worker] Navigate fetch failed, falling back to offline page.');
-                return await caches.match('/THiXX-OTH/offline.html');
+                return await caches.match(`${REPO_PATH}offline.html`);
             }
         })());
         return;
     }
 
     // Assets - Cache on Demand
-    if (url.pathname.startsWith('/THiXX-OTH/assets/')) {
+    if (url.pathname.startsWith(`${REPO_PATH}assets/`)) {
         event.respondWith(
             caches.match(request).then(cachedResponse => {
                 if (cachedResponse) {
@@ -225,11 +239,27 @@ self.addEventListener('message', (event) => {
     if (event.data && event.data.action === 'cache-doc') {
         const tenant = event.data.tenant || 'default';
         const docCacheName = `${DOC_CACHE_PREFIX}-${tenant}`;
+        const url = event.data.url;
+
+        console.log(`[SW Message] Cache-Anfrage für: ${url}`);
 
         event.waitUntil(
             caches.open(docCacheName)
-                .then(cache => cache.add(new Request(event.data.url, { mode: 'no-cors' })))
-                .catch(err => console.error('[Service Worker] Failed to cache doc:', err))
+                .then(cache => {
+                    // Verwende fetch statt cache.add für bessere Kontrolle
+                    return fetch(url)
+                        .then(response => {
+                            if (response.ok || response.type === 'opaque') {
+                                // Nur erfolgreiche oder opaque Responses cachen
+                                return cache.put(url, response);
+                            } else {
+                                console.warn(`[SW Message] Nicht-OK Response für ${url}: ${response.status}`);
+                            }
+                        });
+                })
+                .catch(err => {
+                    console.error('[SW Message] Dokument-Caching fehlgeschlagen:', url, err);
+                })
         );
     } else if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
@@ -242,7 +272,7 @@ self.addEventListener('message', (event) => {
  * Supports Android Chrome's native Background Sync API
  */
 self.addEventListener('sync', (event) => {
-    console.log('[SW] Sync event received:', event.tag);
+    console.log('[SW Sync] Sync event received:', event.tag);
 
     // Check if this is a document cache sync event
     if (event.tag.startsWith('cache-doc:')) {
@@ -260,7 +290,16 @@ self.addEventListener('sync', (event) => {
             caches.open(docCacheName)
                 .then(cache => {
                     console.log(`[SW Sync] Caching ${urlToCache} in ${docCacheName}`);
-                    return cache.add(new Request(urlToCache, { mode: 'no-cors' }));
+                    // Verwende fetch + put statt cache.add für bessere Kontrolle
+                    return fetch(urlToCache)
+                        .then(response => {
+                            if (response.ok || response.type === 'opaque') {
+                                // Nur erfolgreiche oder opaque Responses cachen
+                                return cache.put(urlToCache, response);
+                            } else {
+                                throw new Error(`Non-OK response: ${response.status}`);
+                            }
+                        });
                 })
                 .then(() => {
                     console.log(`[SW Sync] Successfully cached ${urlToCache}`);

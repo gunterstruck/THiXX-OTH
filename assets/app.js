@@ -579,8 +579,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const cache = await caches.open(correctCacheName);
-            const request = new Request(url, { mode: 'no-cors' });
-            const response = await cache.match(request);
+            // Verwende normalen Request (konsistent mit sw.js fetch handler)
+            const response = await cache.match(url);
             return !!response;
         } catch (error) {
             console.error("Cache check failed:", error);
