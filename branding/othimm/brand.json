@@ -1,0 +1,24 @@
+{
+  "tenantId": "othimm",
+  "appName": "O.Thimm NFC Tool",
+  "short_name": "O.Thimm",
+  "theme": "customer-brand",
+  "lockTheme": false,
+  "icons": {
+    "icon192": "/THiXX-OTH/assets/icon-192.png",
+    "icon512": "/THiXX-OTH/assets/icon-512.png"
+  },
+  "brandColors": {
+    "primary": "#d54b2a",
+    "secondary": "#6C6B66"
+  },
+  "legal": {
+    "imprint": "https://www.othimm.de/impressum",
+    "privacy": "https://www.othimm.de/datenschutz"
+  },
+  "logo": {
+    "type": "html",
+    "html": "<span class=\"logo-orange\">O.</span><span class=\"logo-gray\">Thimm</span>",
+    "class": "logo othimm"
+  }
+}

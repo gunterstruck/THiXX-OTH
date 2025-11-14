@@ -18,30 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Application State ---
     const appState = {
-        translations: {}, isNfcActionActive: false, isCooldownActive: false,
+        isNfcActionActive: false, isCooldownActive: false,
         abortController: null, scannedDataObject: null, eventLog: [],
         nfcTimeoutId: null, gracePeriodTimeoutId: null,
-    };
-
-    // --- Design Templates ---
-    const designs = {
-        'thixx_standard': { appName: "ThiXX NFC Tool", short_name: "ThiXX", theme: "dark", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#f04e37", secondary: "#6c6b66" } },
-'peterpohl': { 
-    appName: "Peter Pohl NFC Tool", 
-    short_name: "Peter Pohl", 
-    theme: "customer-brand", 
-    lockTheme: false, 
-    icons: { 
-        icon192: "/THiXX-OTH/assets/PP-192x192.png", 
-        icon512: "/THiXX-OTH/assets/PP-512x512.png" 
-    }, 
-    brandColors: { 
-        primary: "#00457D", 
-        secondary: "#FFEC00" 
-    } 
-},
-        'sigx': { appName: "THiXX NFC Tool", short_name: "THiXX", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png", icon512: "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png" }, brandColors: { primary: "#5865F2", secondary: "#3d3d3d" } },
-        'othimm': { appName: "O.Thimm NFC Tool", short_name: "O.Thimm", theme: "customer-brand", lockTheme: false, icons: { icon192: "/THiXX-OTH/assets/icon-192.png", icon512: "/THiXX-OTH/assets/icon-512.png" }, brandColors: { primary: "#d54b2a", secondary: "#6C6B66" } }
     };
 
     // --- DOM Element References ---
@@ -80,9 +59,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     // --- Internationalization (i18n) ---
-    function t(key, options = {}) { let text = key.split('.').reduce((obj, i) => obj?.[i], appState.translations); if (!text) { console.warn(`Translation not found for key: ${key}`); return key; } if (options.replace) { for (const [placeholder, value] of Object.entries(options.replace)) { text = text.replace(`{${placeholder}}`, value); } } return text; }
-    async function loadTranslations() { const lang = navigator.language.split('-')[0]; const supportedLangs = ['de', 'en', 'es', 'fr']; const selectedLang = supportedLangs.includes(lang) ? lang : 'de'; const path = `/THiXX-OTH/lang/${selectedLang}.json`; try { const response = await fetch(path); if (!response.ok) throw new Error(`Language file for ${selectedLang} not found at ${path}`); appState.translations = await response.json(); document.documentElement.lang = selectedLang; } catch (error) { console.error('Could not load translations, falling back to German.', error); try { const fallbackPath = `/THiXX-OTH/lang/de.json`; const response = await fetch(fallbackPath); appState.translations = await response.json(); document.documentElement.lang = 'de'; } catch (fallbackError) { console.error('Could not load fallback German translations.', fallbackError); } } }
-    function applyTranslations() { document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); }); document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); }); document.title = t('appTitle'); document.body.classList.add('translations-loaded'); }
+    // Use AppController.t() shortcut
+    function t(key, options = {}) {
+        return window.AppController ? window.AppController.t(key, options) : key;
+    }
 
     // --- Error Handling ---
     /**
@@ -139,18 +119,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- App Initialization ---
     /**
-     * Loads application configuration from config.json
-     * @returns {Promise<Object>} Configuration object with design settings
-     */
-    async function loadConfig() { try { const response = await fetch('/THiXX-OTH/config.json'); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); return await response.json(); } catch (error) { console.warn('Config load failed, using default.', error); return { design: "default" }; } }
-
-    /**
      * Main application initialization function
      * Sets up error handlers, service worker, translations, and UI components
      */
     async function main() {
         // Initialize global error handlers first
         ErrorHandler.initGlobalHandlers();
+
+        // Initialize core modules (branding, i18n, schema)
+        if (window.AppController) {
+            await window.AppController.initialize();
+        } else {
+            console.error('[App] AppController not loaded. Core modules required.');
+            return;
+        }
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -190,10 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        await loadTranslations();
-        applyTranslations();
-        const config = await loadConfig();
-        applyConfig(config);
         setupEventListeners();
         setTodaysDate();
         checkNfcSupport();
@@ -337,21 +315,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     } }
 
-    function applyConfig(config) {
-        const selectedDesign = designs[config.design] || designs['thixx_standard'];
-        
-        if (!isIOS()) { 
-            updateManifest(selectedDesign); 
-        }
-
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        if (currentTheme !== selectedDesign.theme) { applyTheme(selectedDesign.theme); }
-        if (selectedDesign.lockTheme) { if (themeSwitcher) themeSwitcher.classList.add('hidden'); } else { if (themeSwitcher) themeSwitcher.classList.remove('hidden'); }
-        const customerBtnImg = document.querySelector('.theme-btn[data-theme="customer-brand"] img');
-        if (customerBtnImg && selectedDesign.icons?.icon512) { customerBtnImg.src = selectedDesign.icons.icon512; }
-        if (selectedDesign.brandColors?.primary) { document.documentElement.style.setProperty('--primary-color-override', selectedDesign.brandColors.primary); }
-        if (selectedDesign.brandColors?.secondary) { document.documentElement.style.setProperty('--secondary-color-override', selectedDesign.brandColors.secondary); }
-    }
 
     // --- NFC Logic ---
     /**
@@ -578,8 +541,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI/UX Functions ---
-    function updateManifest(design) { const manifestLink = document.querySelector('link[rel="manifest"]'); if (!manifestLink) return; const oldHref = manifestLink.href; if (oldHref && oldHref.startsWith('blob:')) { URL.revokeObjectURL(oldHref); } const newManifest = { name: design.appName, short_name: design.short_name, start_url: "/THiXX-OTH/index.html", scope: "/THiXX-OTH/", display: "standalone", background_color: "#ffffff", theme_color: design.brandColors.primary || "#f04e37", orientation: "portrait-primary", icons: [{ src: design.icons.icon192, sizes: "192x192", type: "image/png" }, { src: design.icons.icon512, sizes: "512x512", type: "image/png" }] }; const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' }); manifestLink.href = URL.createObjectURL(blob); }
-    function applyTheme(themeName) { const themeButtons = document.querySelectorAll('.theme-btn'); document.documentElement.setAttribute('data-theme', themeName); localStorage.setItem('thixx-theme', themeName); themeButtons.forEach(btn => { btn.classList.toggle('active', btn.dataset.theme === themeName); }); const metaThemeColor = document.querySelector('meta[name="theme-color"]'); if (metaThemeColor) { const colors = { dark: '#0f172a', thixx: '#f8f9fa', 'customer-brand': '#FCFCFD' }; metaThemeColor.setAttribute('content', colors[themeName] || '#FCFCFD'); } }
+    function applyTheme(themeName) {
+        if (window.AppController) {
+            window.AppController.applyTheme(themeName);
+        }
+    }
     function setupReadTabInitialState() { protocolCard.innerHTML = ''; const p = document.createElement('p'); p.className = 'placeholder-text'; p.textContent = t('placeholderRead'); protocolCard.appendChild(p); docLinkContainer.innerHTML = ''; if(readActions) readActions.classList.add('hidden'); }
     function initCollapsibles() { document.querySelectorAll('.collapsible').forEach(el => makeCollapsible(el)) }
     
