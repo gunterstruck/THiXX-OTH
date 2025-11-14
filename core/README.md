@@ -1,37 +1,53 @@
 # Core Directory
 
-**Status:** Partially cleaned up
+**Status:** Active modular architecture
 
 ## Removed Files (2025-01-14)
 
-The following files were removed as they were duplicates from the THiXX-I project and not used in THiXX-OTH:
+The following files were removed as they were duplicates from the THiXX-I project:
 
 - ~~`app.js`~~ - Duplicate of `/assets/app.js`
 - ~~`theme-bootstrap.js`~~ - Duplicate of `/assets/theme-bootstrap.js`
 - ~~`theme.css`~~ - Duplicate of `/assets/style.css`
 
-## Remaining Files
+## Active Core Modules
 
-- `i18n.js` - Internationalization module (not currently used, kept for potential future use)
-- `schema.js` - Schema engine module (not currently used, kept for potential future use)
-- `lang/` - Language files (duplicates of `/lang/`, kept for reference)
+These modules are **actively used** by THiXX-OTH (loaded in index.html:118-121):
+
+- `i18n.js` - Internationalization module (active - provides window.I18N API)
+- `schema.js` - Schema engine module (active - provides window.SchemaEngine API)
+- `branding.js` - Branding/theming module (active - provides window.BrandingEngine API)
+- `app.js` - Application controller (active - provides window.AppController API)
 
 ## Active Project Structure
 
-THiXX-OTH uses the following structure:
+THiXX-OTH uses a modular architecture:
 
 ```
 /THiXX-OTH/
+├── core/                    ← Core modules (loaded first)
+│   ├── i18n.js             ← I18N engine
+│   ├── schema.js           ← Schema engine
+│   ├── branding.js         ← Branding engine
+│   └── app.js              ← App controller
 ├── assets/
-│   ├── app.js ← Active application code
-│   ├── theme-bootstrap.js ← Active theme initialization
-│   └── style.css ← Active styles
-├── lang/ ← Active language files
+│   ├── app.js              ← Main application logic
+│   ├── theme-bootstrap.js  ← Theme initialization
+│   └── style.css           ← Styles
+├── lang/                    ← Language files (de.json, en.json)
 ├── index.html
-├── sw.js ← Service Worker (now correctly configured)
+├── sw.js                    ← Service Worker
 └── manifest.webmanifest
 ```
 
-## Note
+## Module Loading Order
 
-If the modular architecture from THiXX-I (with separate i18n.js and schema.js modules) is needed in the future, these files can be integrated or restored from Git history.
+1. `core/i18n.js` - Translation system
+2. `core/schema.js` - Form generation and URL encoding/decoding
+3. `core/branding.js` - Theme and branding configuration
+4. `core/app.js` - Central controller coordinating all modules
+5. `assets/app.js` - UI logic and NFC interactions
+
+## Testing
+
+Tests for the schema module are located in `/tests/schema.test.js` and test the production code from `core/schema.js`.

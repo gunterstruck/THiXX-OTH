@@ -766,7 +766,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showMessage(text, type = 'info', duration = 4000) { if(!messageBanner) return; messageBanner.textContent = text; messageBanner.className = 'message-banner'; messageBanner.classList.add(type); messageBanner.classList.remove('hidden'); setTimeout(() => messageBanner.classList.add('hidden'), duration); addLogEntry(text, type); }
-    function setTodaysDate() { const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const dateInput = document.getElementById('am'); if (dateInput) dateInput.value = `${yyyy}-${mm}-${dd}` }
+    function setTodaysDate() { const today = new Date(); const yyyy = today.getFullYear(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const dateIdentifier = window.SchemaEngine?.getFieldIdentifierByName('am'); if (dateIdentifier) { const dateInput = document.getElementById(dateIdentifier); if (dateInput) dateInput.value = `${yyyy}-${mm}-${dd}`; } }
     
     function setNfcBadge(state, message = '') {
         if(!nfcStatusBadge) return;
