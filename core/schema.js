@@ -287,7 +287,7 @@
      * Erstellt URL-Payload aus Formulardaten
      * @param {Object} data - Form-Daten (key-value pairs)
      * @param {string} baseUrl - Basis-URL
-     * @returns {string} Vollständige URL mit Query-Params
+     * @returns {string} Vollständige URL mit Hash-Fragment (iOS-kompatibel)
      */
     function encodeUrl(data, baseUrl) {
         const params = new URLSearchParams();
@@ -300,7 +300,7 @@
             }
         }
 
-        return `${baseUrl}?${params.toString()}`;
+        return `${baseUrl}#${params.toString()}`;
     }
 
     /**
