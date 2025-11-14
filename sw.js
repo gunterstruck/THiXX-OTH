@@ -9,8 +9,8 @@
 
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
-// Cache-Version - erhöht nach Robustness-Improvements (REPO_PATH, opaque response handling)
-const CORE_CACHE_NAME = 'thixx-oth-core-v14';
+// Cache-Version - erhöht nach weiteren Optimierungen (Origin-Check, Header-Handling, Error-Reporting)
+const CORE_CACHE_NAME = 'thixx-oth-core-v15';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // Core Assets für Offline-Verfügbarkeit
@@ -119,17 +119,18 @@ self.addEventListener('fetch', (event) => {
                     // Klonen, da der Body nur einmal gelesen werden kann
                     const pdfBody = await pdfResponse.clone().blob();
 
-                    // Neue Header erstellen
-                    const headers = new Headers({
-                        'Content-Type': 'application/pdf',
-                        'Content-Disposition': 'inline', // 'inline' statt 'attachment'
-                        'Content-Length': pdfBody.size
-                    });
+                    // Neue Header erstellen (bestehende beibehalten)
+                    const headers = new Headers(pdfResponse.headers);
+                    headers.set('Content-Type', 'application/pdf');
+                    headers.set('Content-Disposition', 'inline'); // 'inline' statt 'attachment'
 
-                    // ETag beibehalten, falls vorhanden
-                    if (pdfResponse.headers.has('etag')) {
-                        headers.set('ETag', pdfResponse.headers.get('etag'));
+                    // Content-Length nur überschreiben, wenn nicht vorhanden
+                    if (!headers.has('Content-Length')) {
+                        headers.set('Content-Length', pdfBody.size);
                     }
+
+                    // Encoding-Header entfernen, da wir den Body neu aufgebaut haben
+                    headers.delete('Content-Encoding');
 
                     // Neue Response mit den modifizierten Headern zurückgeben
                     return new Response(pdfBody, {
@@ -150,8 +151,9 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
-    // Navigation-Requests
-    if (request.mode === 'navigate') {
+    // Navigation-Requests - nur für eigenen Origin
+    // Verhindert, dass der SW externe Navigationen abfängt
+    if (request.mode === 'navigate' && url.origin === self.location.origin) {
         // HTML-Seiten aus assets/ (z.B. Datenschutzerklärung)
         if (url.pathname.startsWith(`${REPO_PATH}assets/`) && url.pathname.endsWith('.html')) {
             event.respondWith((async () => {
@@ -316,8 +318,20 @@ self.addEventListener('sync', (event) => {
                 })
                 .catch(err => {
                     console.error('[SW Sync] Failed to cache document:', urlToCache, err);
-                    // Throw error to retry sync later
-                    throw err;
+
+                    // Informiere Clients über Fehler
+                    return self.clients.matchAll().then(clients => {
+                        clients.forEach(client => {
+                            client.postMessage({
+                                type: 'doc-cache-failed',
+                                url: urlToCache,
+                                error: err.message
+                            });
+                        });
+                    }).then(() => {
+                        // Throw error to retry sync later
+                        throw err;
+                    });
                 })
         );
     }
