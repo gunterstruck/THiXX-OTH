@@ -9,8 +9,8 @@
 
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
-// Cache-Version - erhöht nach weiteren Optimierungen (Origin-Check, Header-Handling, Error-Reporting)
-const CORE_CACHE_NAME = 'thixx-oth-core-v15';
+// Cache-Version - v16: Original Status/StatusText bei PDF-Responses übernehmen
+const CORE_CACHE_NAME = 'thixx-oth-core-v16';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // Core Assets für Offline-Verfügbarkeit
@@ -133,9 +133,10 @@ self.addEventListener('fetch', (event) => {
                     headers.delete('Content-Encoding');
 
                     // Neue Response mit den modifizierten Headern zurückgeben
+                    // Übernehme Original-Status (z.B. 206 für Partial Content)
                     return new Response(pdfBody, {
-                        status: 200,
-                        statusText: 'OK',
+                        status: pdfResponse.status,
+                        statusText: pdfResponse.statusText,
                         headers: headers
                     });
                 } catch (error) {
