@@ -84,7 +84,11 @@ window.SchemaEngine = {
   validate(data),
   renderDisplay(data, container),
   getCurrentSchema(),
-  getDocumentLinks()
+  getDocumentLinks(),
+  // Field identifier utilities (added for HTML-safe ID generation)
+  getFieldIdentifierByName(name),      // Returns HTML-safe identifier for a field name
+  getFieldNameByIdentifier(identifier), // Returns original field name from identifier
+  getFieldByName(name)                  // Returns field definition by name
 }
 ```
 

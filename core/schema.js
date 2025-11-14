@@ -344,7 +344,8 @@
         for (const [shortKey, value] of params.entries()) {
             const field = schema.fields.find(f => f.shortKey === shortKey);
             if (field) {
-                data[field.name] = decodeURIComponent(value);
+                // URLSearchParams already returns decoded values, no need for decodeURIComponent
+                data[field.name] = value;
             }
         }
 
