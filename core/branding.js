@@ -269,46 +269,15 @@
     /**
      * Updates the web app manifest with brand-specific values
      * @param {Object} brand - Brand configuration
+     *
+     * DISABLED: Dynamic manifest updates using blob URLs prevent PWA installation
+     * prompts (Add to Home Screen) on many browsers, especially mobile browsers
+     * on iOS and Chrome. We now rely on the static /manifest.webmanifest file
+     * to ensure PWA installability.
      */
     function updateManifest(brand) {
-        const manifestLink = document.querySelector('link[rel="manifest"]');
-        if (!manifestLink) return;
-
-        // Revoke old blob URL if it exists
-        const oldHref = manifestLink.href;
-        if (oldHref && oldHref.startsWith('blob:')) {
-            URL.revokeObjectURL(oldHref);
-        }
-
-        // Create new manifest
-        const manifest = {
-            name: brand.appName,
-            short_name: brand.short_name,
-            start_url: `${REPO_PATH}index.html`,
-            scope: REPO_PATH,
-            display: 'standalone',
-            background_color: '#ffffff',
-            theme_color: brand.brandColors?.primary || '#f04e37',
-            orientation: 'portrait-primary',
-            icons: [
-                {
-                    src: brand.icons.icon192,
-                    sizes: '192x192',
-                    type: 'image/png'
-                },
-                {
-                    src: brand.icons.icon512,
-                    sizes: '512x512',
-                    type: 'image/png'
-                }
-            ]
-        };
-
-        // Create and set new manifest blob URL
-        const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-        manifestLink.href = URL.createObjectURL(blob);
-
-        console.log('[Branding] Manifest updated');
+        console.log('[Branding] Dynamic manifest update skipped to ensure PWA installability.');
+        return;
     }
 
     /**
