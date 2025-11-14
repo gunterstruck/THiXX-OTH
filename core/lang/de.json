@@ -45,6 +45,10 @@
   "updateAvailable": "Ein neues Update ist verfügbar!",
   "updateReload": "Neu laden",
   "placeholderRead": "Bitte halten Sie einen NFC-Tag an Ihr Gerät, um die Daten hier anzuzeigen.",
+  "docOpenOffline": "Betriebsanleitung öffnen (Offline)",
+  "docDownload": "Betriebsanleitung laden & öffnen",
+  "docDownloadLater": "Download (Internet erforderlich)",
+  "docDownloadPending": "Download läuft bei Online-Verbindung",
   "status": {
     "iosRead": "Zum Lesen Tag an Gerät halten",
     "startWriting": "Bereit. Zum Schreiben tippen.",
@@ -65,6 +69,10 @@
     "saveSuccess": "Formulardaten als Datei gespeichert.",
     "loadSuccess": "Daten aus Datei geladen.",
     "noDataToCopy": "Keine Daten zum Kopieren vorhanden.",
+    "docCachingStarted": "Dokumentation wird für Offline-Nutzung gespeichert...",
+    "docSyncScheduled": "Download startet automatisch bei Online-Verbindung",
+    "docDownloadQueued": "Download vorgemerkt - läuft beim nächsten Online-Zugang",
+    "docCachedOnline": "Dokumentation wurde erfolgreich im Hintergrund geladen",
     "payloadTooLarge": "Daten sind zu groß für einen Standard-NFC-Tag!",
     "updateChecking": "Suche nach Updates...",
     "noUpdateFound": "Kein neues Update gefunden."

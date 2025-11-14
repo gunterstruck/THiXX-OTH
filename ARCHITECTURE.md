@@ -94,7 +94,9 @@ window.SchemaEngine = {
 - Laden der Mandanten-Konfiguration
 - Anwendung von Branding (Farben, Icons, Logo)
 - Theme-Management
-- Manifest-Generierung
+
+**Hinweis:** Die dynamische Manifest-Generierung wurde deaktiviert, um PWA-Installierbarkeit sicherzustellen.
+Die App verwendet stattdessen die statische `/manifest.webmanifest` Datei.
 
 **API:**
 ```javascript
@@ -190,8 +192,9 @@ Die App lädt automatisch:
 - Logo wird aktualisiert
 - Farben werden angewendet
 - Theme wird gesetzt
-- Manifest wird generiert
 - Icons werden aktualisiert
+
+**Hinweis:** Das Manifest wird nicht dynamisch generiert, sondern aus der statischen `/manifest.webmanifest` Datei geladen.
 
 ## Vorteile dieser Architektur
 

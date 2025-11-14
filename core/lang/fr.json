@@ -45,6 +45,10 @@
   "updateAvailable": "Une nouvelle mise à jour est disponible!",
   "updateReload": "Recharger",
   "placeholderRead": "Veuillez approcher une étiquette NFC de votre appareil pour afficher les données ici.",
+  "docOpenOffline": "Ouvrir le Manuel (Hors ligne)",
+  "docDownload": "Charger et Ouvrir le Manuel",
+  "docDownloadLater": "Téléchargement (Internet requis)",
+  "docDownloadPending": "Le téléchargement démarrera en ligne",
   "status": {
     "iosRead": "Approcher l'étiquette de l'appareil pour lire",
     "startWriting": "Prêt. Appuyer pour écrire.",
@@ -65,6 +69,10 @@
     "saveSuccess": "Données du formulaire enregistrées en tant que fichier.",
     "loadSuccess": "Données chargées depuis le fichier.",
     "noDataToCopy": "Aucune donnée disponible à copier.",
+    "docCachingStarted": "La documentation est en cours d'enregistrement pour une utilisation hors ligne...",
+    "docSyncScheduled": "Le téléchargement démarrera automatiquement en ligne",
+    "docDownloadQueued": "Téléchargement en file d'attente - démarrera en ligne",
+    "docCachedOnline": "La documentation a été mise en cache avec succès en arrière-plan",
     "payloadTooLarge": "Les données sont trop volumineuses pour une étiquette NFC standard!",
     "updateChecking": "Recherche de mises à jour...",
     "noUpdateFound": "Aucune nouvelle mise à jour trouvée."
