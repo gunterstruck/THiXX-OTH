@@ -9,13 +9,25 @@ Dieses Verzeichnis enthält Mandanten-spezifische Konfigurationen für die THiXX
 ```
 branding/
 ├── thixx_standard/
-│   └── brand.json
+│   ├── brand.json         # Mandanten-Konfiguration
+│   ├── brand.css          # Mandanten-spezifische Styles
+│   ├── impressum.html     # Individuelles Impressum
+│   └── datenschutz.html   # Individuelle Datenschutzerklärung
 ├── peterpohl/
-│   └── brand.json
+│   ├── brand.json
+│   ├── brand.css
+│   ├── impressum.html
+│   └── datenschutz.html
 ├── sigx/
-│   └── brand.json
+│   ├── brand.json
+│   ├── brand.css
+│   ├── impressum.html
+│   └── datenschutz.html
 └── othimm/
-    └── brand.json
+    ├── brand.json
+    ├── brand.css
+    ├── impressum.html
+    └── datenschutz.html
 ```
 
 ## Mandant wechseln
@@ -102,7 +114,11 @@ Jede `brand.json` Datei enthält folgende Konfiguration:
 ## Neuen Mandanten hinzufügen
 
 1. Erstellen Sie ein neues Verzeichnis: `branding/neuer-mandant/`
-2. Erstellen Sie `brand.json` mit der entsprechenden Konfiguration
+2. Erstellen Sie die folgenden Dateien:
+   - `brand.json` - Mandanten-Konfiguration (Farben, Logo, Icons)
+   - `brand.css` - Mandanten-spezifische CSS-Anpassungen (optional)
+   - `impressum.html` - Individuelles Impressum mit korrekten Firmendaten
+   - `datenschutz.html` - Individuelle Datenschutzerklärung
 3. Optional: Erstellen Sie tenant-spezifische Übersetzungen in `branding/neuer-mandant/lang/de.json`
 4. Aktualisieren Sie `/config.json` mit dem neuen Mandanten-Namen
 

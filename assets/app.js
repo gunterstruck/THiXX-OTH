@@ -526,14 +526,24 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLog() { if (!eventLogOutput) return; eventLogOutput.innerHTML = ''; appState.eventLog.forEach(entry => { const div = document.createElement('div'); div.className = `log-entry ${entry.type}`; const timestamp = document.createElement('span'); timestamp.className = 'log-timestamp'; timestamp.textContent = entry.timestamp; const message = document.createTextNode(` ${entry.message}`); div.appendChild(timestamp); div.appendChild(message); eventLogOutput.appendChild(div); }); }
 
     /**
-     * Löscht den Dokumenten-Cache des Service Workers manuell.
+     * Löscht alle Dokumenten-Caches des Service Workers (tenant-übergreifend).
      */
     async function clearDocumentCache() {
-        const cacheName = 'thixx-oth-docs-default'; // Exakt dieser Name
+        const DOC_CACHE_PREFIX = 'thixx-oth-docs-';
         try {
-            const wasDeleted = await caches.delete(cacheName);
+            const cacheNames = await caches.keys();
+            const docCaches = cacheNames.filter(name => name.startsWith(DOC_CACHE_PREFIX));
 
-            if (wasDeleted) {
+            let deletedCount = 0;
+            for (const cacheName of docCaches) {
+                const wasDeleted = await caches.delete(cacheName);
+                if (wasDeleted) {
+                    deletedCount++;
+                    console.log('[App] Deleted cache:', cacheName);
+                }
+            }
+
+            if (deletedCount > 0) {
                 showMessage(t('messages.cacheCleared'), 'ok');
             } else {
                 showMessage(t('messages.cacheEmpty'), 'info');
