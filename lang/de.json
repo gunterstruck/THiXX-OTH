@@ -64,6 +64,7 @@
         "saveSuccess": "Formulardaten als Datei gespeichert.",
         "loadSuccess": "Daten aus Datei geladen.",
         "noDataToCopy": "Keine Daten zum Kopieren vorhanden.",
+        "docCachingStarted": "Dokumentation wird für Offline-Nutzung gespeichert...",
         "payloadTooLarge": "Daten sind zu groß für einen Standard-NFC-Tag!",
         "updateChecking": "Suche nach Updates...",
         "noUpdateFound": "Kein neues Update gefunden."

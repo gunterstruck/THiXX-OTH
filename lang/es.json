@@ -64,6 +64,7 @@
         "saveSuccess": "Datos del formulario guardados como archivo.",
         "loadSuccess": "Datos cargados desde el archivo.",
         "noDataToCopy": "No hay datos disponibles para copiar.",
+        "docCachingStarted": "La documentación se está guardando para uso sin conexión...",
         "payloadTooLarge": "¡Los datos son demasiado grandes para una etiqueta NFC estándar!",
         "updateChecking": "Buscando actualizaciones...",
         "noUpdateFound": "No se encontraron nuevas actualizaciones."
