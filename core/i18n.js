@@ -102,6 +102,9 @@
 
         // Page Title
         document.title = t('appTitle');
+
+        // Anti-Flicker: Elemente mit [data-i18n] sichtbar schalten
+        document.body.classList.add('translations-loaded');
     }
 
     // Expose API
