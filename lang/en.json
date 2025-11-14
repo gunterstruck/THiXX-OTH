@@ -65,6 +65,7 @@
         "saveSuccess": "Form data saved as file.",
         "loadSuccess": "Data loaded from file.",
         "noDataToCopy": "No data available to copy.",
+        "docCachingStarted": "Documentation is being saved for offline use...",
         "payloadTooLarge": "Data is too large for a standard NFC tag!",
         "updateChecking": "Checking for updates...",
         "noUpdateFound": "No new update found."

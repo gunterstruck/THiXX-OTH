@@ -64,6 +64,7 @@
         "saveSuccess": "Données du formulaire enregistrées en tant que fichier.",
         "loadSuccess": "Données chargées depuis le fichier.",
         "noDataToCopy": "Aucune donnée à copier.",
+        "docCachingStarted": "La documentation est en cours d'enregistrement pour une utilisation hors ligne...",
         "payloadTooLarge": "Les données sont trop volumineuses pour un tag NFC standard !",
         "updateChecking": "Recherche de mises à jour...",
         "noUpdateFound": "Aucune nouvelle mise à jour trouvée."
