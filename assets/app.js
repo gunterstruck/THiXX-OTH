@@ -492,9 +492,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const voltageIdentifier = window.SchemaEngine?.getFieldIdentifierByName('Spannung');
         if (voltageIdentifier) {
             const voltageInput = form.elements[voltageIdentifier];
-            if (voltageInput) {
+            if (voltageInput && voltageInput.value.trim() !== '') {
                 const voltage = parseFloat(voltageInput.value);
-                if (voltage && (voltage < 0 || voltage > 1000)) {
+                if (isNaN(voltage) || voltage < 0 || voltage > 1000) {
                     errors.push(t('errors.invalidVoltage'));
                 }
             }
