@@ -5,13 +5,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const CONFIG = {
         COOLDOWN_DURATION: 2000,
         WRITE_SUCCESS_GRACE_PERIOD: 2500,
+        WRITE_RETRY_DELAY: 200,
         MAX_PAYLOAD_SIZE: 880,
         DEBOUNCE_DELAY: 300,
         MAX_LOG_ENTRIES: 15,
         NFC_WRITE_TIMEOUT: 5000,
         MAX_WRITE_RETRIES: 3,
         BASE_URL: BASE_URL,
-        SAFETY_BUFFER_PX: 10 // Puffer für die System-Navigationsleiste
+        SAFETY_BUFFER_PX: 10,
+        URL_REVOKE_DELAY: 100
     };
 
     // --- Application State ---
@@ -83,12 +85,73 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyTranslations() { document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); }); document.querySelectorAll('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); }); document.title = t('appTitle'); }
 
     // --- Error Handling ---
-    class ErrorHandler { static handle(error, context = 'General') { const readableError = this.getReadableError(error); console.error(`[${context}]`, error); showMessage(readableError, 'err'); addLogEntry(`${context}: ${readableError}`, 'err'); return readableError; } static getReadableError(error) { const errorMap = { 'NotAllowedError': 'errors.NotAllowedError', 'NotSupportedError': 'errors.NotSupportedError', 'NotFoundError': 'errors.NotFoundError', 'NotReadableError': 'errors.NotReadableError', 'NetworkError': 'errors.NetworkError', 'AbortError': 'errors.AbortError', 'TimeoutError': 'errors.WriteTimeoutError' }; if (error.name === 'NetworkError' && generateUrlFromForm().length > CONFIG.MAX_PAYLOAD_SIZE) { return t('messages.payloadTooLarge'); } if (errorMap[error.name]) { return t(errorMap[error.name]); } return error.message || t('errors.unknown'); } }
+    /**
+     * Global error handler for unhandled errors and promise rejections
+     */
+    class ErrorHandler {
+        static handle(error, context = 'General') {
+            const readableError = this.getReadableError(error);
+            console.error(`[${context}]`, error);
+            showMessage(readableError, 'err');
+            addLogEntry(`${context}: ${readableError}`, 'err');
+            return readableError;
+        }
+
+        static getReadableError(error) {
+            const errorMap = {
+                'NotAllowedError': 'errors.NotAllowedError',
+                'NotSupportedError': 'errors.NotSupportedError',
+                'NotFoundError': 'errors.NotFoundError',
+                'NotReadableError': 'errors.NotReadableError',
+                'NetworkError': 'errors.NetworkError',
+                'AbortError': 'errors.AbortError',
+                'TimeoutError': 'errors.WriteTimeoutError'
+            };
+            if (error.name === 'NetworkError' && generateUrlFromForm().length > CONFIG.MAX_PAYLOAD_SIZE) {
+                return t('messages.payloadTooLarge');
+            }
+            if (errorMap[error.name]) {
+                return t(errorMap[error.name]);
+            }
+            return error.message || t('errors.unknown');
+        }
+
+        /**
+         * Initialize global error handlers
+         */
+        static initGlobalHandlers() {
+            window.addEventListener('error', (event) => {
+                console.error('[Global Error]', event.error);
+                if (event.error) {
+                    ErrorHandler.handle(event.error, 'UncaughtError');
+                }
+                event.preventDefault();
+            });
+
+            window.addEventListener('unhandledrejection', (event) => {
+                console.error('[Unhandled Promise Rejection]', event.reason);
+                const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+                ErrorHandler.handle(error, 'UnhandledPromise');
+                event.preventDefault();
+            });
+        }
+    }
 
     // --- App Initialization ---
+    /**
+     * Loads application configuration from config.json
+     * @returns {Promise<Object>} Configuration object with design settings
+     */
     async function loadConfig() { try { const response = await fetch('/THiXX-OTH/config.json'); if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); return await response.json(); } catch (error) { console.warn('Config load failed, using default.', error); return { design: "default" }; } }
-    
+
+    /**
+     * Main application initialization function
+     * Sets up error handlers, service worker, translations, and UI components
+     */
     async function main() {
+        // Initialize global error handlers first
+        ErrorHandler.initGlobalHandlers();
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/THiXX-OTH/sw.js', { scope: '/THiXX-OTH/' })
@@ -104,7 +167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         });
                     })
                     .catch(err => ErrorHandler.handle(err, 'ServiceWorkerRegistration'));
-                
+
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                      window.location.reload();
                 });
@@ -123,12 +186,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!processUrlParameters()) {
             setupReadTabInitialState();
             switchTab('read-tab');
-            // [ÄNDERUNG WUNSCHGEMÄSS] Container im initialen Ladezustand (ohne Daten)
-            // voll ausklappen, damit das Overlay verschwindet.
+            // Fully expand container in initial state (without data) to hide overlay
             if (readResultContainer) {
-                autoExpandToFitScreen(readResultContainer); // Höhe berechnen für später
+                autoExpandToFitScreen(readResultContainer); // Calculate height for later
                 readResultContainer.classList.add('expanded');
-                readResultContainer.style.maxHeight = ''; // CSS-Klasse soll greifen
+                readResultContainer.style.maxHeight = ''; // Let CSS class take effect
             }
         }
     }
@@ -215,7 +277,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- UI & Display Logic ---
+    /**
+     * Creates a data pair element for displaying label-value pairs
+     * @param {string} label - The label text
+     * @param {*} value - The value to display
+     * @param {string} unit - Optional unit of measurement
+     * @returns {HTMLElement|null} The created element or null if value is empty
+     */
     function createDataPair(label, value, unit = '') { if (value === undefined || value === null || String(value).trim() === '') return null; const div = document.createElement('div'); div.className = 'data-pair'; const labelSpan = document.createElement('span'); labelSpan.className = 'data-pair-label'; labelSpan.textContent = label; const valueSpan = document.createElement('span'); valueSpan.className = 'data-pair-value'; valueSpan.textContent = `${value} ${unit}`.trim(); div.appendChild(labelSpan); div.appendChild(valueSpan); return div; }
+
+    /**
+     * Displays parsed NFC data in the protocol card
+     * Organizes data into sections and handles document links
+     * @param {Object} data - The parsed data object from NFC tag
+     */
     async function displayParsedData(data) { protocolCard.innerHTML = ''; const fragments = { main: document.createDocumentFragment(), section1: document.createDocumentFragment(), section2: document.createDocumentFragment(), section3: document.createDocumentFragment(), footer: document.createDocumentFragment() }; const addPair = (frag, labelKey, val, unit) => { const el = createDataPair(t(labelKey), val, unit); if (el) frag.appendChild(el); }; addPair(fragments.main, 'HK-Nr', data['HK-Nr']); addPair(fragments.main, 'KKS', data['KKS']); addPair(fragments.section1, 'Leistung', data['Leistung'], 'kW'); addPair(fragments.section1, 'Strom', data['Strom'], 'A'); addPair(fragments.section1, 'Spannung', data['Spannung'], 'V'); addPair(fragments.section1, 'Widerstand', data['Widerstand'], 'Ω'); addPair(fragments.section2, 'Anzahl Heizkabeleinheiten', data['Anzahl Heizkabeleinheiten'], 'Stk'); addPair(fragments.section2, 'Trennkasten', data['Trennkasten'], 'Stk'); addPair(fragments.section2, 'Heizkabeltyp', data['Heizkabeltyp']); addPair(fragments.section2, 'Schaltung', data['Schaltung']); if (data['PT 100']) addPair(fragments.section2, 'Messwertgeber', `PT 100: ${data['PT 100']}`, 'Stk'); if (data['NiCr-Ni']) addPair(fragments.section2, 'Messwertgeber', `NiCr-Ni: ${data['NiCr-Ni']}`, 'Stk'); addPair(fragments.section3, 'Regler', data['Regler'], '°C'); addPair(fragments.section3, 'Sicherheitsregler/Begrenzer', data['Sicherheitsregler/Begrenzer'], '°C'); addPair(fragments.section3, 'Wächter', data['Wächter'], '°C'); addPair(fragments.footer, 'Projekt-Nr', data['Projekt-Nr']); addPair(fragments.footer, 'geprüft von', data['geprüft von']); addPair(fragments.footer, 'am', data['am']); const createSection = (frag, className) => { if (frag.hasChildNodes()) { const section = document.createElement('div'); section.className = className; section.appendChild(frag); protocolCard.appendChild(section); } }; createSection(fragments.main, 'card-main'); createSection(fragments.section1, 'card-section'); createSection(fragments.section2, 'card-section'); createSection(fragments.section3, 'card-section'); createSection(fragments.footer, 'card-footer'); docLinkContainer.innerHTML = ''; if (data['Dokumentation']) { const url = data['Dokumentation']; if (!isValidDocUrl(url)) { console.warn('Invalid documentation URL provided:', url); return; } const button = document.createElement('button'); button.className = 'btn doc-link-btn'; button.dataset.url = url; const isCached = await isUrlCached(url); if (isCached) { button.textContent = t('docOpenOffline'); button.onclick = () => window.open(url, '_blank'); } else { button.textContent = navigator.onLine ? t('docDownload') : t('docDownloadLater'); button.addEventListener('click', handleDocButtonClick); } docLinkContainer.appendChild(button); } }
 
     function applyConfig(config) {
@@ -235,6 +310,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- NFC Logic ---
+    /**
+     * Handles NFC write operations with validation and retry logic
+     * Only active in write mode, shows info message in read mode
+     */
     async function handleNfcAction() { if (appState.isNfcActionActive || appState.isCooldownActive) return; const writeTab = document.getElementById('write-tab'); const isWriteMode = writeTab?.classList.contains('active') || false; if (!isWriteMode) { showMessage(t('messages.scanToReadInfo'), 'info'); return; } appState.isNfcActionActive = true; appState.abortController = new AbortController(); appState.nfcTimeoutId = setTimeout(() => { if (appState.abortController && !appState.abortController.signal.aborted) { appState.abortController.abort(new DOMException('NFC Operation Timed Out', 'TimeoutError')); } }, CONFIG.NFC_WRITE_TIMEOUT); try { const ndef = new NDEFReader(); const validationErrors = validateForm(); if (validationErrors.length > 0) { throw new Error(validationErrors.join('\n')); } setNfcBadge('writing'); const urlPayload = generateUrlFromForm(); const message = { records: [{ recordType: "url", data: urlPayload }] }; await writeWithRetries(ndef, message); } catch (error) { clearTimeout(appState.nfcTimeoutId); if (error.name !== 'AbortError') { ErrorHandler.handle(error, 'NFCAction'); } else if (error.message === 'NFC Operation Timed Out') { const timeoutError = new DOMException('Write operation timed out.', 'TimeoutError'); ErrorHandler.handle(timeoutError, 'NFCAction'); } abortNfcAction(); startCooldown(); } }
     async function writeWithRetries(ndef, message) { for (let attempt = 1; attempt <= CONFIG.MAX_WRITE_RETRIES; attempt++) { try { showMessage(t('messages.writeAttempt', { replace: { attempt, total: CONFIG.MAX_WRITE_RETRIES } }), 'info', CONFIG.NFC_WRITE_TIMEOUT); await ndef.write(message, { signal: appState.abortController.signal }); clearTimeout(appState.nfcTimeoutId); setNfcBadge('success', t('status.success')); showMessage(t('messages.writeSuccess'), 'ok'); 
     
@@ -246,9 +325,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, CONFIG.WRITE_SUCCESS_GRACE_PERIOD);
     appState.gracePeriodTimeoutId = timeoutId;
 
-    return; } catch (error) { console.warn(`Write attempt ${attempt} failed:`, error); if (attempt === CONFIG.MAX_WRITE_RETRIES || ['TimeoutError', 'AbortError'].includes(error.name)) { throw error; } await new Promise(resolve => setTimeout(resolve, 200)); } } }
+    return; } catch (error) { console.warn(`Write attempt ${attempt} failed:`, error); if (attempt === CONFIG.MAX_WRITE_RETRIES || ['TimeoutError', 'AbortError'].includes(error.name)) { throw error; } await new Promise(resolve => setTimeout(resolve, CONFIG.WRITE_RETRY_DELAY)); } } }
 
     // --- Data Processing & Form Handling ---
+    /**
+     * Processes URL query parameters and displays NFC data if present
+     * Automatically decodes short keys to full field names
+     * @returns {boolean} True if data was loaded from URL, false otherwise
+     */
     function processUrlParameters() {
         const params = new URLSearchParams(window.location.search);
         if (params.toString() === '') return false;
@@ -266,8 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if(readActions) readActions.classList.remove('hidden');
             switchTab('read-tab');
 
-            // [ÄNDERUNG WUNSCHGEMÄSS] Da Daten geladen sind,
-            // Container dynamisch einklappen (NICHT voll ausklappen).
+            // Data loaded - dynamically collapse container (NOT fully expand)
             if (readResultContainer) {
                 readResultContainer.classList.remove('expanded');
                 autoExpandToFitScreen(readResultContainer);
@@ -275,13 +358,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showMessage(t('messages.readSuccess'), 'ok');
             history.replaceState(null, '', window.location.pathname);
-            return true; // [KORREKTUR] Fehlendes return true
+            return true;
         }
 
-        return false; // [KORREKTUR] Fehlendes return false
-    } // [KORREKTUR] Fehlende schließende Klammer } für processUrlParameters
+        return false;
+    }
 
-    // [KORREKTUR] Die gesamte Funktion war verloren gegangen
     function getFormData() {
         const formData = new FormData(form);
         const data = {};
@@ -294,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
             delete data['PT 100'];
         }
         if (!document.getElementById('has_NiCr-Ni')?.checked) {
-             delete data['NiCr-Ni']; // [BUGFIX] War fälschlicherweise 'has_PT100'
+             delete data['NiCr-Ni'];
         }
 
         // Checkbox-Hilfsfelder entfernen
@@ -306,6 +388,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateUrlFromForm() { const params = new URLSearchParams(); const formData = getFormData(); for (const [key, value] of Object.entries(formData)) { const shortKey = fieldMap[key]; if (shortKey) params.append(shortKey, value); } return `${CONFIG.BASE_URL}?${params.toString()}`; }
     function updatePayloadOnChange() { const writeTab = document.getElementById('write-tab'); if (writeTab?.classList.contains('active')) { const urlPayload = generateUrlFromForm(); payloadOutput.value = urlPayload; const byteCount = new TextEncoder().encode(urlPayload).length; payloadSize.textContent = `${byteCount} / ${CONFIG.MAX_PAYLOAD_SIZE} Bytes`; const isOverLimit = byteCount > CONFIG.MAX_PAYLOAD_SIZE; payloadSize.classList.toggle('limit-exceeded', isOverLimit); nfcStatusBadge.disabled = isOverLimit; } }
+    /**
+     * Validates form data before NFC write operation
+     * Checks voltage range, URL format, and payload size limits
+     * @returns {string[]} Array of validation error messages (empty if valid)
+     */
     function validateForm() { const errors = []; const voltageInput = form.elements['Spannung']; if(voltageInput) { const voltage = parseFloat(voltageInput.value); if (voltage && (voltage < 0 || voltage > 1000)) { errors.push(t('errors.invalidVoltage')); } } const docUrlInput = form.elements['Dokumentation']; if(docUrlInput) { const docUrl = docUrlInput.value; if (docUrl && !isValidDocUrl(docUrl)) { errors.push(t('errors.invalidDocUrl')); } } const payloadByteSize = new TextEncoder().encode(generateUrlFromForm()).length; if (payloadByteSize > CONFIG.MAX_PAYLOAD_SIZE) { errors.push(t('messages.payloadTooLarge')); } return errors; }
 
     // --- Helper & State Functions ---
@@ -363,24 +450,24 @@ document.addEventListener('DOMContentLoaded', () => {
             setNfcBadge('idle');
         }
         
-        // [ÄNDERUNG WUNSCHGEMÄSS] Container-Status beim Tab-Wechsel verwalten
+        // Manage container states on tab switch
         if (tabId === 'write-tab') {
             updatePayloadOnChange();
-            // Schreib-Tab IMMER dynamisch einklappen
+            // Write tab: always dynamically collapse
             const writeFormContainer = document.getElementById('write-form-container');
             if (writeFormContainer) {
                 writeFormContainer.classList.remove('expanded');
                 autoExpandToFitScreen(writeFormContainer);
             }
         } else if (tabId === 'read-tab') {
-            // Lese-Tab: Prüfen, ob Daten vorhanden sind
+            // Read tab: check if data is present
             if (readResultContainer) {
                 if (appState.scannedDataObject) {
-                    // Daten sind da: dynamisch einklappen
+                    // Data present: dynamically collapse
                     readResultContainer.classList.remove('expanded');
                     autoExpandToFitScreen(readResultContainer);
                 } else {
-                    // Keine Daten da: voll ausklappen
+                    // No data: fully expand
                     readResultContainer.classList.add('expanded');
                     readResultContainer.style.maxHeight = '';
                 }
@@ -474,34 +561,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (hasNiCrCheckbox) hasNiCrCheckbox.checked = false;
         }
 
-        switchTab('write-tab'); 
-        // [ÄNDERUNG] 'autoExpandToFitScreen' wird jetzt von switchTab() gehandhabt.
-        // autoExpandToFitScreen(document.getElementById('write-form-container'));
+        switchTab('write-tab');
+        // Note: autoExpandToFitScreen is now handled by switchTab()
         showMessage(t('messages.copySuccess'), 'ok');
     }
-    function saveFormAsJson() { const data = getFormData(); const jsonString = JSON.stringify(data, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; const today = new Date().toISOString().slice(0, 10); a.download = `thixx-${today}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => { URL.revokeObjectURL(url); }, 100); showMessage(t('messages.saveSuccess'), 'ok'); }
+    function saveFormAsJson() { const data = getFormData(); const jsonString = JSON.stringify(data, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; const today = new Date().toISOString().slice(0, 10); a.download = `thixx-${today}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => { URL.revokeObjectURL(url); }, CONFIG.URL_REVOKE_DELAY); showMessage(t('messages.saveSuccess'), 'ok'); }
     function loadJsonIntoForm(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); appState.scannedDataObject = data; populateFormFromScan(); showMessage(t('messages.loadSuccess'), 'ok') } catch (error) { const userMessage = error instanceof SyntaxError ? 'Die JSON-Datei hat ein ungültiges Format.' : error.message; ErrorHandler.handle(new Error(userMessage), 'LoadJSON'); } finally { event.target.value = null } }; reader.readAsText(file) }
     
     function autoExpandToFitScreen(elementToExpand) {
         if (!elementToExpand) return;
 
-        // [ÄNDERUNG] 'requestAnimationFrame' entfernt, um die Ausführung sofort zu erzwingen
-        // Dies behebt das Timing-Problem auf iOS und beim Initialladen.
+        // Execute immediately without requestAnimationFrame to fix iOS timing issues
         const container = document.querySelector('.container');
         if (!headerElement || !legalInfoContainer || !container) return;
 
         const headerHeight = headerElement.offsetHeight;
         const tabsHeight = (tabsContainer && !tabsContainer.classList.contains('hidden')) ? tabsContainer.offsetHeight : 0;
-        
-        // [ÄNDERUNG WUNSCHGEMÄSS] Die Höhe des Impressums wird hier nicht mehr berücksichtigt,
-        // damit der Inhalts-Container (Protokoll/Formular) den gesamten verfügbaren Platz einnimmt
-        // und das Impressum nach unten aus dem sichtbaren Bereich schiebt.
-        // const legalHeight = legalInfoContainer.offsetHeight;
-        
+
+        // Legal info height not included - container takes full available space,
+        // pushing legal info below the visible area
         const containerStyle = window.getComputedStyle(container);
         const containerPadding = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
 
-        // [ÄNDERUNG WUNSCHGEMÄSS] legalHeight aus der Berechnung entfernt.
         const otherElementsHeight = headerHeight + tabsHeight + containerPadding;
         
         const viewportHeight = window.innerHeight;
@@ -512,17 +593,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const targetHeight = Math.max(availableHeight, minRequiredHeight);
 
-        // [ÄNDERUNG] Speichere die berechnete Höhe für das manuelle Zuklappen
+        // Store calculated height for manual collapse
         elementToExpand.dataset.autoHeight = `${targetHeight}px`;
-        
-        // [ÄNDERUNG] Setze NUR die inline-Höhe für das "dynamische Einklappen".
-        // Die 'expanded' Klasse wird hier NICHT mehr verwaltet.
+
+        // Set inline height for dynamic collapse (expanded class managed elsewhere)
         elementToExpand.style.maxHeight = `${targetHeight}px`;
-        
-        // [ÄNDERUNG] Diese Zeilen werden entfernt, da die 'expanded'-Logik
-        // jetzt kontextabhängig (in main, switchTab, processUrl) gesteuert wird.
-        // elementToExpand.style.maxHeight = '';
-        // elementToExpand.classList.add('expanded');
     }
 
     function makeCollapsible(el) {
@@ -531,19 +606,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const toggle = () => {
             const isFullyExpanded = el.classList.contains('expanded');
-            
+
             if (isFullyExpanded) {
                 el.classList.remove('expanded');
-                // MODIFIED: When collapsing, check for a stored auto-height.
-                // This returns it to the 'fits on screen' state instead of fully collapsed.
+                // Return to 'fits on screen' state if auto-height is set
                 if (el.dataset.autoHeight) {
                     el.style.maxHeight = el.dataset.autoHeight;
                 } else {
-                    el.style.maxHeight = ''; // Fallback to default CSS height if no auto-height is set
+                    el.style.maxHeight = ''; // Fallback to default CSS height
                 }
             } else {
-                // When expanding, remove any inline max-height to let the 'expanded' class take full effect.
-                el.style.maxHeight = ''; 
+                // Expand fully - let CSS expanded class take effect
+                el.style.maxHeight = '';
                 el.classList.add('expanded');
             }
         };
