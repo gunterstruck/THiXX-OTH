@@ -28,7 +28,7 @@
         "wechselstrom": "AC"
     },
     "Messwertgeber": "Sensor (Quantity)",
-    "geprüft von": "checked by",
+    "geprüft von": "Checked by",
     "am": "on",
     "saveFile": "Save File",
     "loadFile": "Load File",

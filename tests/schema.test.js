@@ -390,6 +390,24 @@ describe('SchemaEngine.encodeUrl', () => {
         expect(result).toContain('#');
         expect(result).not.toContain('?');
     });
+
+    test('should include numeric zero values (0 and 0.0)', () => {
+        const data = {
+            'HK-Nr': 'HC123',
+            'Spannung': 0,
+            'Leistung': '0.0'
+        };
+        const result = window.SchemaEngine.encodeUrl(data, 'https://example.com');
+        expect(result).toBe('https://example.com#HK=HC123&U=0&P=0.0');
+    });
+
+    test('should include string zero value', () => {
+        const data = {
+            'Spannung': '0'
+        };
+        const result = window.SchemaEngine.encodeUrl(data, 'https://example.com');
+        expect(result).toBe('https://example.com#U=0');
+    });
 });
 
 /**
