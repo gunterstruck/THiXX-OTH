@@ -58,7 +58,7 @@
     "messages": {
         "scanToReadInfo": "Para leer, simplemente acerque la etiqueta al dispositivo. No es necesario hacer clic.",
         "writeAttempt": "Intento de escritura {attempt} de {total}. Mantenga la etiqueta en el dispositivo...",
-        "writeSuccess": "¡Etiketa NFC escrita con éxito!",
+        "writeSuccess": "¡Etiqueta NFC escrita con éxito!",
         "readSuccess": "¡Datos leídos con éxito!",
         "copySuccess": "Datos copiados al formulario.",
         "saveSuccess": "Datos del formulario guardados como archivo.",

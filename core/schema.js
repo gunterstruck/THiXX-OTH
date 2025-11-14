@@ -1,6 +1,35 @@
 /**
  * SCHEMA MODULE
  * Generisches Schema-System für Formular-Generierung, URL-Encoding/Decoding, Validierung
+ *
+ * TESTING REQUIREMENTS:
+ *
+ * Critical functions that require automated testing:
+ *
+ * 1. createFieldIdentifier(field, usedIdentifiers)
+ *    - Umlaute/Sonderzeichen (ü→u, ä→a, ö→o)
+ *    - Leerzeichen zu Bindestrichen (geprüft von → gepruft-von)
+ *    - Eindeutigkeit bei Kollisionen (feld → feld, feld-1, feld-2)
+ *    - Führende/abschließende Bindestriche entfernen
+ *
+ * 2. encodeUrl(data, baseUrl)
+ *    - Leere Werte ignorieren
+ *    - Sonderzeichen URL-encode
+ *    - ShortKeys korrekt zuordnen
+ *    - Hash-Fragment-Format (#param1=value1&param2=value2)
+ *
+ * 3. decodeUrl(params)
+ *    - Korrekte ShortKey→Name Zuordnung
+ *    - URL-Decoding von Sonderzeichen
+ *    - Fehlende/unbekannte Parameter ignorieren
+ *
+ * 4. validate(data)
+ *    - Required-Felder prüfen
+ *    - Number-Ranges (min/max) validieren
+ *    - URL-Format (http/https) prüfen
+ *    - Fehler-Messages korrekt zusammenstellen
+ *
+ * Empfohlenes Test-Framework: Vitest oder Jest
  */
 
 (function(window) {

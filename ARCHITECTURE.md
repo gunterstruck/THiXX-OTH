@@ -16,7 +16,7 @@ THiXX-OTH nutzt eine modulare Multi-Tenancy-Architektur, die es ermöglicht, ver
 ```
 THiXX-OTH/
 ├── assets/
-│   └── app.js              # Hauptanwendung (nur noch Controller-Logik)
+│   └── app.js              # Hauptanwendung (UI-Logik, NFC, Event-Handler)
 ├── branding/               # Mandanten-Konfigurationen
 │   ├── thixx_standard/
 │   ├── peterpohl/

@@ -482,7 +482,39 @@ document.addEventListener('DOMContentLoaded', () => {
      * Checks voltage range, URL format, and payload size limits
      * @returns {string[]} Array of validation error messages (empty if valid)
      */
-    function validateForm() { const errors = []; const voltageInput = form.elements['Spannung']; if(voltageInput) { const voltage = parseFloat(voltageInput.value); if (voltage && (voltage < 0 || voltage > 1000)) { errors.push(t('errors.invalidVoltage')); } } const docUrlInput = form.elements['Dokumentation']; if(docUrlInput) { const docUrl = docUrlInput.value; if (docUrl && !isValidDocUrl(docUrl)) { errors.push(t('errors.invalidDocUrl')); } } const payloadByteSize = new TextEncoder().encode(generateUrlFromForm()).length; if (payloadByteSize > CONFIG.MAX_PAYLOAD_SIZE) { errors.push(t('messages.payloadTooLarge')); } return errors; }
+    function validateForm() {
+        const errors = [];
+
+        // Use SchemaEngine API to get correct slugified field identifiers
+        const voltageIdentifier = window.SchemaEngine?.getFieldIdentifierByName('Spannung');
+        if (voltageIdentifier) {
+            const voltageInput = form.elements[voltageIdentifier];
+            if (voltageInput) {
+                const voltage = parseFloat(voltageInput.value);
+                if (voltage && (voltage < 0 || voltage > 1000)) {
+                    errors.push(t('errors.invalidVoltage'));
+                }
+            }
+        }
+
+        const docIdentifier = window.SchemaEngine?.getFieldIdentifierByName('Dokumentation');
+        if (docIdentifier) {
+            const docUrlInput = form.elements[docIdentifier];
+            if (docUrlInput) {
+                const docUrl = docUrlInput.value;
+                if (docUrl && !isValidDocUrl(docUrl)) {
+                    errors.push(t('errors.invalidDocUrl'));
+                }
+            }
+        }
+
+        const payloadByteSize = new TextEncoder().encode(generateUrlFromForm()).length;
+        if (payloadByteSize > CONFIG.MAX_PAYLOAD_SIZE) {
+            errors.push(t('messages.payloadTooLarge'));
+        }
+
+        return errors;
+    }
 
     // --- Helper & State Functions ---
     function startCooldown() { appState.isCooldownActive = true; setNfcBadge('cooldown'); setTimeout(() => { appState.isCooldownActive = false; if ('NDEFReader' in window) setNfcBadge('idle'); }, CONFIG.COOLDOWN_DURATION) }
