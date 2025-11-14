@@ -8,6 +8,23 @@ html:not(.theme-loaded) *::after {
     animation: none !important;
 }
 
+/* ============================================
+   ANTI-FLICKER: Text-Inhalte erst nach i18n-Load
+   ============================================ */
+body:not(.translations-loaded) [data-i18n],
+body:not(.translations-loaded) [data-i18n-title] {
+    visibility: hidden;
+    opacity: 0;
+}
+
+/* Übersetzte Elemente sanft einblenden */
+body.translations-loaded [data-i18n],
+body.translations-loaded [data-i18n-title] {
+    visibility: visible;
+    opacity: 1;
+    transition: opacity 0.2s ease-in-out;
+}
+
 /* Dark Theme (Default) */
 :root, :root[data-theme="dark"] {
     --primary-color: #f04e37;
