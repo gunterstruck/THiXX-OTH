@@ -7,10 +7,10 @@ Diese Test-Suite testet kritische Funktionen des Schema-Moduls, wie in `core/sch
 ### 1. createFieldIdentifier
 - ✅ Umlaute (ü→u, ä→a, ö→o)
 - ✅ Leerzeichen zu Bindestrichen
-- ✅ Eindeutigkeit bei Kollisionen
 - ✅ Führende/abschließende Bindestriche entfernen
 - ✅ Sonderzeichen-Handling
 - ✅ ShortKey-Priorität
+- ✅ Eindeutigkeit bei Kollisionen (ID-Suffix bei Duplikaten)
 
 ### 2. encodeUrl
 - ✅ Leere Werte ignorieren

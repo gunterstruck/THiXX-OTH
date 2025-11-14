@@ -159,6 +159,50 @@ describe('SchemaEngine.createFieldIdentifier (via buildForm and getFieldIdentifi
         expect(input.tagName).toBe('INPUT');
         expect(input.dataset.fieldName).toBe('HK-Nr');
     });
+
+    test('should handle identifier collisions by adding numeric suffixes', () => {
+        const schema = {
+            fields: [
+                { name: 'HK-Nr', shortKey: 'HK', type: 'text', group: 'main', required: false },
+                { name: 'Hauskanal', shortKey: 'HK', type: 'text', group: 'main', required: false },
+                { name: 'Hauptkanal', shortKey: 'HK', type: 'number', group: 'main', required: false }
+            ],
+            groups: [
+                { id: 'main', labelKey: 'acceptanceProtocol', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        // Get identifiers for all three fields
+        const identifier1 = window.SchemaEngine.getFieldIdentifierByName('HK-Nr');
+        const identifier2 = window.SchemaEngine.getFieldIdentifierByName('Hauskanal');
+        const identifier3 = window.SchemaEngine.getFieldIdentifierByName('Hauptkanal');
+
+        // Verify unique identifiers were created
+        expect(identifier1).toBe('hk');
+        expect(identifier2).toBe('hk-1');
+        expect(identifier3).toBe('hk-2');
+
+        // Verify all three DOM elements exist with correct IDs
+        const input1 = document.getElementById(identifier1);
+        const input2 = document.getElementById(identifier2);
+        const input3 = document.getElementById(identifier3);
+
+        expect(input1).not.toBeNull();
+        expect(input2).not.toBeNull();
+        expect(input3).not.toBeNull();
+
+        expect(input1.dataset.fieldName).toBe('HK-Nr');
+        expect(input2.dataset.fieldName).toBe('Hauskanal');
+        expect(input3.dataset.fieldName).toBe('Hauptkanal');
+
+        // Verify they have different IDs
+        expect(input1.id).not.toBe(input2.id);
+        expect(input2.id).not.toBe(input3.id);
+        expect(input1.id).not.toBe(input3.id);
+    });
 });
 
 /**
