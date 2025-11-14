@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateBanner = document.getElementById('update-banner');
     const reloadButton = document.getElementById('reload-button');
     const checkForUpdateBtn = document.getElementById('check-for-update-btn');
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
 
     // --- Utility Functions ---
     const debounce = (func, wait) => { let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func.apply(this, args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); }; };
@@ -233,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(themeSwitcher) themeSwitcher.addEventListener('click', handleThemeChange);
         if(nfcStatusBadge) nfcStatusBadge.addEventListener('click', handleNfcAction);
         if(checkForUpdateBtn) checkForUpdateBtn.addEventListener('click', handleCheckForUpdate);
+        if(clearCacheBtn) clearCacheBtn.addEventListener('click', clearDocumentCache);
         
         if (!isIOS()) {
             if (copyToFormBtn) {
@@ -259,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(themeSwitcher) themeSwitcher.removeEventListener('click', handleThemeChange);
         if(nfcStatusBadge) nfcStatusBadge.removeEventListener('click', handleNfcAction);
         if(checkForUpdateBtn) checkForUpdateBtn.removeEventListener('click', handleCheckForUpdate);
+        if(clearCacheBtn) clearCacheBtn.removeEventListener('click', clearDocumentCache);
     
         if (!isIOS()) {
             if (copyToFormBtn) {
@@ -521,6 +524,31 @@ document.addEventListener('DOMContentLoaded', () => {
     function abortNfcAction() { clearTimeout(appState.nfcTimeoutId); if (appState.gracePeriodTimeoutId) { clearTimeout(appState.gracePeriodTimeoutId); appState.gracePeriodTimeoutId = null; } if (appState.abortController && !appState.abortController.signal.aborted) { appState.abortController.abort(new DOMException('User aborted', 'AbortError')); } appState.abortController = null; appState.isNfcActionActive = false; }
     function addLogEntry(message, type = 'info') { const timestamp = new Date().toLocaleTimeString(document.documentElement.lang, { hour: '2-digit', minute: '2-digit', second: '2-digit' }); appState.eventLog.unshift({ timestamp, message, type }); if (appState.eventLog.length > CONFIG.MAX_LOG_ENTRIES) appState.eventLog.pop(); renderLog(); }
     function renderLog() { if (!eventLogOutput) return; eventLogOutput.innerHTML = ''; appState.eventLog.forEach(entry => { const div = document.createElement('div'); div.className = `log-entry ${entry.type}`; const timestamp = document.createElement('span'); timestamp.className = 'log-timestamp'; timestamp.textContent = entry.timestamp; const message = document.createTextNode(` ${entry.message}`); div.appendChild(timestamp); div.appendChild(message); eventLogOutput.appendChild(div); }); }
+
+    /**
+     * Löscht den Dokumenten-Cache des Service Workers manuell.
+     */
+    async function clearDocumentCache() {
+        const cacheName = 'thixx-oth-docs-default'; // Exakt dieser Name
+        try {
+            const wasDeleted = await caches.delete(cacheName);
+
+            if (wasDeleted) {
+                showMessage(t('messages.cacheCleared'), 'ok');
+            } else {
+                showMessage(t('messages.cacheEmpty'), 'info');
+            }
+
+            // Nach einer kurzen Verzögerung neu laden,
+            // damit die "Öffnen (Offline)"-Buttons verschwinden.
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+
+        } catch (error) {
+            ErrorHandler.handle(error, 'ClearCache');
+        }
+    }
 
     /**
      * Sendet eine Nachricht robust an den Service Worker und wartet,
