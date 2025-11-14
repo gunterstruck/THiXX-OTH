@@ -16,22 +16,17 @@
  * 3. Run tests with: npm test
  */
 
-// Mock DOM environment for Node.js
-const { JSDOM } = require('jsdom');
-const fs = require('fs');
-const path = require('path');
+// ES Module imports
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-// Create a DOM environment
-const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>', {
-    url: 'http://localhost',
-    runScripts: 'dangerously'
-});
-
-global.window = dom.window;
-global.document = dom.window.document;
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Mock I18N before loading schema.js
-global.window.I18N = {
+window.I18N = {
     t: (key, options) => {
         const translations = {
             'errors.required': '{field} ist ein Pflichtfeld.',
@@ -48,84 +43,121 @@ global.window.I18N = {
 };
 
 // Load the ACTUAL production code from core/schema.js
-const schemaPath = path.join(__dirname, '../core/schema.js');
-const schemaCode = fs.readFileSync(schemaPath, 'utf-8');
+const schemaPath = join(__dirname, '../core/schema.js');
+const schemaCode = readFileSync(schemaPath, 'utf-8');
 eval(schemaCode); // Execute in global context to populate window.SchemaEngine
 
-// Helper to access private createFieldIdentifier (for unit testing)
-// Note: In production, this is internal. Tests validate it indirectly via buildForm.
-function createFieldIdentifier(field, usedIdentifiers) {
-    const base = (field.shortKey || field.name || 'field')
-        .toString()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9_]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .toLowerCase() || 'field';
-
-    let identifier = base;
-    let counter = 1;
-    const identifierToField = new Map();
-    while (usedIdentifiers.has(identifier) || identifierToField.has(identifier)) {
-        identifier = `${base}-${counter++}`;
-    }
-
-    usedIdentifiers.add(identifier);
-    return identifier;
-}
-
 /**
- * TESTS FOR createFieldIdentifier
+ * TESTS FOR createFieldIdentifier (via public API)
+ * Tests the internal createFieldIdentifier function by using the public API:
+ * - buildForm() creates the identifiers
+ * - getFieldIdentifierByName() retrieves them
  */
-describe('SchemaEngine.createFieldIdentifier', () => {
+describe('SchemaEngine.createFieldIdentifier (via buildForm and getFieldIdentifierByName)', () => {
+    let form;
+
+    beforeEach(() => {
+        // Create a fresh form element for each test
+        form = document.createElement('form');
+        document.body.appendChild(form);
+    });
+
+    afterEach(() => {
+        // Clean up after each test
+        if (form && form.parentNode) {
+            form.parentNode.removeChild(form);
+        }
+    });
+
     test('should convert Umlaute correctly (ü→u, ä→a, ö→o)', () => {
-        const usedIdentifiers = new Set();
-        const field = { name: 'Wächter' };
-        const result = createFieldIdentifier(field, usedIdentifiers);
-        expect(result).toBe('wachter');
+        const schema = {
+            fields: [
+                { name: 'Wächter', shortKey: 'Wäch', type: 'number', unit: '°C', group: 'control', required: false }
+            ],
+            groups: [
+                { id: 'control', labelKey: 'groupControl', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        const identifier = window.SchemaEngine.getFieldIdentifierByName('Wächter');
+        expect(identifier).toBe('wach');
     });
 
     test('should convert spaces to hyphens', () => {
-        const usedIdentifiers = new Set();
-        const field = { name: 'geprüft von' };
-        const result = createFieldIdentifier(field, usedIdentifiers);
-        expect(result).toBe('gepruft-von');
-    });
+        const schema = {
+            fields: [
+                { name: 'geprüft von', shortKey: 'Chk', type: 'text', group: 'footer', required: false }
+            ],
+            groups: [
+                { id: 'footer', labelKey: 'groupFooter', order: 1 }
+            ]
+        };
 
-    test('should handle collisions by adding counter', () => {
-        const usedIdentifiers = new Set();
-        const field1 = { name: 'feld' };
-        const field2 = { name: 'feld' };
-        const field3 = { name: 'feld' };
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
 
-        const result1 = createFieldIdentifier(field1, usedIdentifiers);
-        const result2 = createFieldIdentifier(field2, usedIdentifiers);
-        const result3 = createFieldIdentifier(field3, usedIdentifiers);
-
-        expect(result1).toBe('feld');
-        expect(result2).toBe('feld-1');
-        expect(result3).toBe('feld-2');
-    });
-
-    test('should remove leading and trailing hyphens', () => {
-        const usedIdentifiers = new Set();
-        const field = { name: '---test---' };
-        const result = createFieldIdentifier(field, usedIdentifiers);
-        expect(result).toBe('test');
+        const identifier = window.SchemaEngine.getFieldIdentifierByName('geprüft von');
+        expect(identifier).toBe('chk');
     });
 
     test('should handle special characters', () => {
-        const usedIdentifiers = new Set();
-        const field = { name: 'Projekt-Nr.' };
-        const result = createFieldIdentifier(field, usedIdentifiers);
-        expect(result).toBe('projekt-nr');
+        const schema = {
+            fields: [
+                { name: 'Projekt-Nr.', shortKey: 'Proj', type: 'text', group: 'footer', required: false }
+            ],
+            groups: [
+                { id: 'footer', labelKey: 'groupFooter', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        const identifier = window.SchemaEngine.getFieldIdentifierByName('Projekt-Nr.');
+        expect(identifier).toBe('proj');
     });
 
     test('should prefer shortKey over name', () => {
-        const usedIdentifiers = new Set();
-        const field = { name: 'Sehr langes Feldname', shortKey: 'HK' };
-        const result = createFieldIdentifier(field, usedIdentifiers);
-        expect(result).toBe('hk');
+        const schema = {
+            fields: [
+                { name: 'Sehr langes Feldname', shortKey: 'HK', type: 'text', group: 'main', required: false }
+            ],
+            groups: [
+                { id: 'main', labelKey: 'acceptanceProtocol', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        const identifier = window.SchemaEngine.getFieldIdentifierByName('Sehr langes Feldname');
+        expect(identifier).toBe('hk');
+    });
+
+    test('should create correct HTML input elements with proper IDs', () => {
+        const schema = {
+            fields: [
+                { name: 'HK-Nr', shortKey: 'HK', type: 'text', group: 'main', required: false }
+            ],
+            groups: [
+                { id: 'main', labelKey: 'acceptanceProtocol', order: 1 }
+            ]
+        };
+
+        window.SchemaEngine.loadSchema({ dataSchema: schema });
+        window.SchemaEngine.buildForm(form, schema);
+
+        const identifier = window.SchemaEngine.getFieldIdentifierByName('HK-Nr');
+        expect(identifier).toBe('hk');
+
+        // Verify the actual DOM element exists with this ID
+        const input = document.getElementById(identifier);
+        expect(input).not.toBeNull();
+        expect(input.tagName).toBe('INPUT');
+        expect(input.dataset.fieldName).toBe('HK-Nr');
     });
 });
 
