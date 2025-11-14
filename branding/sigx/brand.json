@@ -1,0 +1,24 @@
+{
+  "tenantId": "sigx",
+  "appName": "THiXX NFC Tool",
+  "short_name": "THiXX",
+  "theme": "customer-brand",
+  "lockTheme": false,
+  "icons": {
+    "icon192": "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png",
+    "icon512": "/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_512x512.png"
+  },
+  "brandColors": {
+    "primary": "#5865F2",
+    "secondary": "#3d3d3d"
+  },
+  "legal": {
+    "imprint": "https://thixx.de/impressum",
+    "privacy": "https://thixx.de/datenschutz"
+  },
+  "logo": {
+    "type": "text",
+    "text": "SigX",
+    "class": "logo sigx"
+  }
+}

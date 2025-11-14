@@ -1,0 +1,25 @@
+{
+  "tenantId": "peterpohl",
+  "appName": "Peter Pohl NFC Tool",
+  "short_name": "Peter Pohl",
+  "theme": "customer-brand",
+  "lockTheme": false,
+  "icons": {
+    "icon192": "/THiXX-OTH/assets/PP-192x192.png",
+    "icon512": "/THiXX-OTH/assets/PP-512x512.png"
+  },
+  "brandColors": {
+    "primary": "#00457D",
+    "secondary": "#FFEC00"
+  },
+  "legal": {
+    "imprint": "https://www.peterpohl.de/impressum",
+    "privacy": "https://www.peterpohl.de/datenschutz"
+  },
+  "logo": {
+    "type": "image",
+    "src": "/THiXX-OTH/assets/PP-512x512.png",
+    "alt": "Peter Pohl Logo",
+    "class": "logo peterpohl"
+  }
+}
