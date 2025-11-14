@@ -21,5 +21,199 @@
     "src": "/THiXX-OTH/assets/PP-512x512.png",
     "alt": "Peter Pohl Logo",
     "class": "logo peterpohl"
+  },
+  "dataSchema": {
+    "fields": [
+      {
+        "name": "HK-Nr",
+        "shortKey": "HK",
+        "type": "text",
+        "group": "main",
+        "required": false
+      },
+      {
+        "name": "KKS",
+        "shortKey": "KKS",
+        "type": "text",
+        "group": "main",
+        "required": false
+      },
+      {
+        "name": "Leistung",
+        "shortKey": "P",
+        "type": "number",
+        "unit": "kW",
+        "group": "electrical",
+        "required": false
+      },
+      {
+        "name": "Strom",
+        "shortKey": "I",
+        "type": "number",
+        "unit": "A",
+        "group": "electrical",
+        "required": false
+      },
+      {
+        "name": "Spannung",
+        "shortKey": "U",
+        "type": "number",
+        "unit": "V",
+        "group": "electrical",
+        "required": false,
+        "min": 0,
+        "max": 1000
+      },
+      {
+        "name": "Widerstand",
+        "shortKey": "R",
+        "type": "number",
+        "unit": "Ω",
+        "group": "electrical",
+        "required": false
+      },
+      {
+        "name": "Anzahl Heizkabeleinheiten",
+        "shortKey": "Anz",
+        "type": "number",
+        "unit": "Stk",
+        "group": "heating",
+        "required": false
+      },
+      {
+        "name": "Trennkasten",
+        "shortKey": "TB",
+        "type": "number",
+        "unit": "Stk",
+        "group": "heating",
+        "required": false
+      },
+      {
+        "name": "Heizkabeltyp",
+        "shortKey": "HKT",
+        "type": "text",
+        "group": "heating",
+        "required": false
+      },
+      {
+        "name": "Schaltung",
+        "shortKey": "Sch",
+        "type": "radio",
+        "group": "heating",
+        "required": false,
+        "options": [
+          {
+            "value": "Stern",
+            "i18nKey": "schaltungOptions.stern"
+          },
+          {
+            "value": "Dreieck",
+            "i18nKey": "schaltungOptions.dreieck"
+          },
+          {
+            "value": "Wechselstrom",
+            "i18nKey": "schaltungOptions.wechselstrom"
+          }
+        ]
+      },
+      {
+        "name": "PT 100",
+        "shortKey": "PT100",
+        "type": "checkbox",
+        "group": "sensors",
+        "required": false
+      },
+      {
+        "name": "NiCr-Ni",
+        "shortKey": "NiCr",
+        "type": "checkbox",
+        "group": "sensors",
+        "required": false
+      },
+      {
+        "name": "Regler",
+        "shortKey": "Reg",
+        "type": "number",
+        "unit": "°C",
+        "group": "control",
+        "required": false
+      },
+      {
+        "name": "Sicherheitsregler/Begrenzer",
+        "shortKey": "Sich",
+        "type": "number",
+        "unit": "°C",
+        "group": "control",
+        "required": false
+      },
+      {
+        "name": "Wächter",
+        "shortKey": "Wäch",
+        "type": "number",
+        "unit": "°C",
+        "group": "control",
+        "required": false
+      },
+      {
+        "name": "Projekt-Nr",
+        "shortKey": "Proj",
+        "type": "text",
+        "group": "footer",
+        "required": false
+      },
+      {
+        "name": "geprüft von",
+        "shortKey": "Chk",
+        "type": "text",
+        "group": "footer",
+        "required": false
+      },
+      {
+        "name": "am",
+        "shortKey": "Date",
+        "type": "date",
+        "group": "footer",
+        "required": false
+      },
+      {
+        "name": "Dokumentation",
+        "shortKey": "Doc",
+        "type": "url",
+        "group": "footer",
+        "required": false
+      }
+    ],
+    "groups": [
+      {
+        "id": "main",
+        "labelKey": "acceptanceProtocol",
+        "order": 1
+      },
+      {
+        "id": "electrical",
+        "labelKey": "groupElectrical",
+        "order": 2
+      },
+      {
+        "id": "heating",
+        "labelKey": "groupHeating",
+        "order": 3
+      },
+      {
+        "id": "sensors",
+        "labelKey": "Messwertgeber",
+        "order": 4
+      },
+      {
+        "id": "control",
+        "labelKey": "groupControl",
+        "order": 5
+      },
+      {
+        "id": "footer",
+        "labelKey": "groupFooter",
+        "order": 6
+      }
+    ]
   }
 }

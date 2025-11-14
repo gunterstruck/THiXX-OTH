@@ -49,10 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const reloadButton = document.getElementById('reload-button');
     const checkForUpdateBtn = document.getElementById('check-for-update-btn');
 
-    // --- Data Mapping ---
-    const fieldMap = { 'HK-Nr': 'HK', 'KKS': 'KKS', 'Leistung': 'P', 'Strom': 'I', 'Spannung': 'U', 'Widerstand': 'R', 'Regler': 'Reg', 'Sicherheitsregler/Begrenzer': 'Sich', 'Wächter': 'Wäch', 'Projekt-Nr': 'Proj', 'Anzahl Heizkabeleinheiten': 'Anz', 'Trennkasten': 'TB', 'Heizkabeltyp': 'HKT', 'Schaltung': 'Sch', 'PT 100': 'PT100', 'NiCr-Ni': 'NiCr', 'geprüft von': 'Chk', 'am': 'Date', 'Dokumentation': 'Doc' };
-    const reverseFieldMap = Object.fromEntries(Object.entries(fieldMap).map(([k, v]) => [v, k]));
-
     // --- Utility Functions ---
     const debounce = (func, wait) => { let timeout; return function executedFunction(...args) { const later = () => { clearTimeout(timeout); func.apply(this, args); }; clearTimeout(timeout); timeout = setTimeout(later, wait); }; };
     function isValidDocUrl(url) { if (!url || typeof url !== 'string') return false; try { const parsed = new URL(url); return parsed.protocol === 'https:' || (parsed.protocol === 'http:' && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')); } catch { return false; } }
@@ -134,6 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Build dynamic form from schema
+        if (form && window.AppController) {
+            window.AppController.buildForm(form);
+            console.log('[App] Dynamic form built from schema');
+        }
+
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/THiXX-OTH/sw.js', { scope: '/THiXX-OTH/' })
@@ -207,8 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleTabClick = (e) => { const tabLink = e.target.closest('.tab-link'); if (tabLink) switchTab(tabLink.dataset.tab); };
     const handleThemeChange = (e) => { const themeBtn = e.target.closest('.theme-btn'); if (themeBtn) applyTheme(themeBtn.dataset.theme); };
     const handleReloadClick = () => { navigator.serviceWorker.getRegistration().then(reg => { if (reg.waiting) { reg.waiting.postMessage({ type: 'SKIP_WAITING' }); } }); };
-    const handlePt100Change = (e) => { const el = document.getElementById('PT 100'); if (el) el.disabled = !e.target.checked; };
-    const handleNiCrNiChange = (e) => { const el = document.getElementById('NiCr-Ni'); if (el) el.disabled = !e.target.checked; };
     const debouncedUpdatePayload = debounce(updatePayloadOnChange, CONFIG.DEBOUNCE_DELAY);
     const handleCheckForUpdate = () => {
         if ('serviceWorker' in navigator) {
@@ -252,10 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
             form.addEventListener('change', updatePayloadOnChange);
         }
         if(reloadButton) reloadButton.addEventListener('click', handleReloadClick);
-        const pt100Checkbox = document.getElementById('has_PT100');
-        if(pt100Checkbox) pt100Checkbox.addEventListener('change', handlePt100Change);
-        const niCrNiCheckbox = document.getElementById('has_NiCr-Ni');
-        if(niCrNiCheckbox) niCrNiCheckbox.addEventListener('change', handleNiCrNiChange);
     }
 
     function cleanupEventListeners() {
@@ -277,10 +273,6 @@ document.addEventListener('DOMContentLoaded', () => {
             form.removeEventListener('change', updatePayloadOnChange);
         }
         if(reloadButton) reloadButton.removeEventListener('click', handleReloadClick);
-        const pt100Checkbox = document.getElementById('has_PT100');
-        if(pt100Checkbox) pt100Checkbox.removeEventListener('change', handlePt100Change);
-        const niCrNiCheckbox = document.getElementById('has_NiCr-Ni');
-        if(niCrNiCheckbox) niCrNiCheckbox.removeEventListener('change', handleNiCrNiChange);
     }
 
     // --- UI & Display Logic ---
@@ -295,25 +287,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Displays parsed NFC data in the protocol card
-     * Organizes data into sections and handles document links
+     * Uses SchemaEngine to render data according to schema
      * @param {Object} data - The parsed data object from NFC tag
      */
-    async function displayParsedData(data) { protocolCard.innerHTML = ''; const fragments = { main: document.createDocumentFragment(), section1: document.createDocumentFragment(), section2: document.createDocumentFragment(), section3: document.createDocumentFragment(), footer: document.createDocumentFragment() }; const addPair = (frag, labelKey, val, unit) => { const el = createDataPair(t(labelKey), val, unit); if (el) frag.appendChild(el); }; addPair(fragments.main, 'HK-Nr', data['HK-Nr']); addPair(fragments.main, 'KKS', data['KKS']); addPair(fragments.section1, 'Leistung', data['Leistung'], 'kW'); addPair(fragments.section1, 'Strom', data['Strom'], 'A'); addPair(fragments.section1, 'Spannung', data['Spannung'], 'V'); addPair(fragments.section1, 'Widerstand', data['Widerstand'], 'Ω'); addPair(fragments.section2, 'Anzahl Heizkabeleinheiten', data['Anzahl Heizkabeleinheiten'], 'Stk'); addPair(fragments.section2, 'Trennkasten', data['Trennkasten'], 'Stk'); addPair(fragments.section2, 'Heizkabeltyp', data['Heizkabeltyp']); addPair(fragments.section2, 'Schaltung', data['Schaltung']); if (data['PT 100']) addPair(fragments.section2, 'Messwertgeber', `PT 100: ${data['PT 100']}`, 'Stk'); if (data['NiCr-Ni']) addPair(fragments.section2, 'Messwertgeber', `NiCr-Ni: ${data['NiCr-Ni']}`, 'Stk'); addPair(fragments.section3, 'Regler', data['Regler'], '°C'); addPair(fragments.section3, 'Sicherheitsregler/Begrenzer', data['Sicherheitsregler/Begrenzer'], '°C'); addPair(fragments.section3, 'Wächter', data['Wächter'], '°C'); addPair(fragments.footer, 'Projekt-Nr', data['Projekt-Nr']); addPair(fragments.footer, 'geprüft von', data['geprüft von']); addPair(fragments.footer, 'am', data['am']); const createSection = (frag, className) => { if (frag.hasChildNodes()) { const section = document.createElement('div'); section.className = className; section.appendChild(frag); protocolCard.appendChild(section); } }; createSection(fragments.main, 'card-main'); createSection(fragments.section1, 'card-section'); createSection(fragments.section2, 'card-section'); createSection(fragments.section3, 'card-section'); createSection(fragments.footer, 'card-footer'); docLinkContainer.innerHTML = ''; if (data['Dokumentation']) { const url = data['Dokumentation']; if (!isValidDocUrl(url)) { console.warn('Invalid documentation URL provided:', url); return; } const button = document.createElement('button'); button.className = 'btn doc-link-btn'; button.dataset.url = url; const isCached = await isUrlCached(url); if (isCached) { button.textContent = t('docOpenOffline'); button.onclick = () => window.open(url, '_blank'); } else { button.textContent = navigator.onLine ? t('docDownload') : t('docDownloadLater'); button.addEventListener('click', handleDocButtonClick); } docLinkContainer.appendChild(button);
+    async function displayParsedData(data) {
+        // Use SchemaEngine to render data
+        if (window.AppController) {
+            window.AppController.renderDisplay(data, protocolCard);
+        }
 
-        // Proaktives Caching: Dokument automatisch im Hintergrund laden
-        if (!isCached && navigator.onLine && navigator.serviceWorker && navigator.serviceWorker.controller) {
-            try {
-                navigator.serviceWorker.controller.postMessage({
-                    action: 'cache-doc',
-                    url: url
-                });
-                console.log('[App] Proaktives Caching der Dokumentation gestartet:', url);
-                addLogEntry(t('messages.docCachingStarted') || 'Dokumentation wird im Hintergrund geladen...', 'info');
-            } catch (error) {
-                console.warn('[App] Proaktives Caching fehlgeschlagen:', error);
+        // Handle documentation link separately
+        docLinkContainer.innerHTML = '';
+        if (data['Dokumentation']) {
+            const url = data['Dokumentation'];
+            if (!isValidDocUrl(url)) {
+                console.warn('Invalid documentation URL provided:', url);
+                return;
+            }
+
+            const button = document.createElement('button');
+            button.className = 'btn doc-link-btn';
+            button.dataset.url = url;
+            const isCached = await isUrlCached(url);
+
+            if (isCached) {
+                button.textContent = t('docOpenOffline');
+                button.onclick = () => window.open(url, '_blank');
+            } else {
+                button.textContent = navigator.onLine ? t('docDownload') : t('docDownloadLater');
+                button.addEventListener('click', handleDocButtonClick);
+            }
+            docLinkContainer.appendChild(button);
+
+            // Proaktives Caching: Dokument automatisch im Hintergrund laden
+            if (!isCached && navigator.onLine && navigator.serviceWorker && navigator.serviceWorker.controller) {
+                try {
+                    navigator.serviceWorker.controller.postMessage({
+                        action: 'cache-doc',
+                        url: url
+                    });
+                    console.log('[App] Proaktives Caching der Dokumentation gestartet:', url);
+                    addLogEntry(t('messages.docCachingStarted') || 'Dokumentation wird im Hintergrund geladen...', 'info');
+                } catch (error) {
+                    console.warn('[App] Proaktives Caching fehlgeschlagen:', error);
+                }
             }
         }
-    } }
+    }
 
 
     // --- NFC Logic ---
@@ -346,11 +366,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams(hash);
         if (params.toString() === '') return false;
 
-        const data = {};
-        for (const [shortKey, value] of params.entries()) {
-            const fullKey = reverseFieldMap[shortKey];
-            if (fullKey) data[fullKey] = decodeURIComponent(value);
-        }
+        // Use AppController to decode URL parameters
+        const data = window.AppController ? window.AppController.decodeUrl(params) : {};
 
         if (Object.keys(data).length > 0) {
             appState.scannedDataObject = data;
@@ -374,28 +391,46 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getFormData() {
+        if (!form) return {};
+
         const formData = new FormData(form);
         const data = {};
-        for (const [key, value] of formData.entries()) {
-            if (String(value).trim()) data[key] = String(value).trim();
-        }
-        
-        // Checkbox-Werte nur hinzufügen, wenn sie nicht-null/leer sind
-        if (!document.getElementById('has_PT100')?.checked) {
-            delete data['PT 100'];
-        }
-        if (!document.getElementById('has_NiCr-Ni')?.checked) {
-             delete data['NiCr-Ni'];
+
+        // Iterate over form elements and use data-field-name to get original field names
+        for (const element of form.elements) {
+            const fieldName = element.dataset.fieldName || element.name;
+            const value = element.value;
+
+            // Skip empty values
+            if (!value || String(value).trim() === '') continue;
+
+            // Skip helper checkboxes (has_*)
+            if (element.name && element.name.startsWith('has_')) continue;
+
+            // Skip checkbox number inputs if checkbox is not checked
+            if (element.dataset.checkboxValue === 'true') {
+                const checkboxId = `has_${element.id}`;
+                const checkbox = document.getElementById(checkboxId);
+                if (!checkbox || !checkbox.checked) continue;
+            }
+
+            // Handle radio buttons
+            if (element.type === 'radio' && !element.checked) continue;
+
+            // Add to data using original field name
+            data[fieldName] = String(value).trim();
         }
 
-        // Checkbox-Hilfsfelder entfernen
-        delete data['has_PT100'];
-        delete data['has_NiCr-Ni'];
-        
         return data;
     }
 
-    function generateUrlFromForm() { const params = new URLSearchParams(); const formData = getFormData(); for (const [key, value] of Object.entries(formData)) { const shortKey = fieldMap[key]; if (shortKey) params.append(shortKey, value); } return `${CONFIG.BASE_URL}#${params.toString()}`; }
+    function generateUrlFromForm() {
+        const formData = getFormData();
+        if (window.AppController) {
+            return window.AppController.encodeUrl(formData, CONFIG.BASE_URL);
+        }
+        return CONFIG.BASE_URL;
+    }
     function updatePayloadOnChange() { const writeTab = document.getElementById('write-tab'); if (writeTab?.classList.contains('active')) { const urlPayload = generateUrlFromForm(); payloadOutput.value = urlPayload; const byteCount = new TextEncoder().encode(urlPayload).length; payloadSize.textContent = `${byteCount} / ${CONFIG.MAX_PAYLOAD_SIZE} Bytes`; const isOverLimit = byteCount > CONFIG.MAX_PAYLOAD_SIZE; payloadSize.classList.toggle('limit-exceeded', isOverLimit); nfcStatusBadge.disabled = isOverLimit; } }
     /**
      * Validates form data before NFC write operation
@@ -649,58 +684,56 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!appState.scannedDataObject) { 
-            showMessage(t('messages.noDataToCopy'), 'err'); 
+        if (!appState.scannedDataObject) {
+            showMessage(t('messages.noDataToCopy'), 'err');
             return;
         }
 
-        if(form) form.reset(); 
-        setTodaysDate(); 
+        if (!form || !window.SchemaEngine) return;
 
-        for (const [key, value] of Object.entries(appState.scannedDataObject)) { 
-            if(!form) continue;
-            const input = form.elements[key]; 
-            if (input) { 
-                if (input.type === 'radio') { 
-                    form.querySelectorAll(`input[name="${key}"]`).forEach(radio => { 
-                        if (radio.value === value) radio.checked = true;
-                    });
-                } else if (input.type === 'checkbox') { 
-                    input.checked = (value === 'true' || value === 'on');
-                } else { 
+        form.reset();
+        setTodaysDate();
+
+        // Iterate over scanned data and populate form fields
+        for (const [fieldName, value] of Object.entries(appState.scannedDataObject)) {
+            // Get the clean identifier for this field name
+            const identifier = window.SchemaEngine.getFieldIdentifierByName(fieldName);
+            if (!identifier) continue;
+
+            // Get the field definition from schema
+            const field = window.SchemaEngine.getFieldByName(fieldName);
+            if (!field) continue;
+
+            // Handle different field types
+            if (field.type === 'radio') {
+                // Find all radio buttons with this identifier
+                const radios = form.querySelectorAll(`input[type="radio"][name="${identifier}"]`);
+                radios.forEach(radio => {
+                    if (radio.value === value) radio.checked = true;
+                });
+            } else if (field.type === 'checkbox') {
+                // Checkbox type (e.g., PT 100, NiCr-Ni)
+                const checkboxId = `has_${identifier}`;
+                const numberInputId = identifier;
+
+                const checkbox = document.getElementById(checkboxId);
+                const numberInput = document.getElementById(numberInputId);
+
+                if (checkbox && numberInput) {
+                    checkbox.checked = true;
+                    numberInput.disabled = false;
+                    numberInput.value = value || 0;
+                }
+            } else {
+                // Text, number, date, url fields
+                const input = document.getElementById(identifier);
+                if (input) {
                     input.value = value;
-                } 
-            } 
-        } 
-
-        const pt100Input = document.getElementById('PT 100'); 
-        const hasPt100Checkbox = document.getElementById('has_PT100'); 
-        if (appState.scannedDataObject['PT 100']) {
-            if (pt100Input) {
-                pt100Input.value = appState.scannedDataObject['PT 100'];
-                pt100Input.disabled = false;
+                }
             }
-            if (hasPt100Checkbox) hasPt100Checkbox.checked = true;
-        } else {
-            if (pt100Input) pt100Input.disabled = true;
-            if (hasPt100Checkbox) hasPt100Checkbox.checked = false;
-        }
-
-        const niCrInput = document.getElementById('NiCr-Ni'); 
-        const hasNiCrCheckbox = document.getElementById('has_NiCr-Ni'); 
-        if (appState.scannedDataObject['NiCr-Ni']) {
-            if (niCrInput) {
-                niCrInput.disabled = false;
-                niCrInput.value = appState.scannedDataObject['NiCr-Ni'];
-            }
-            if (hasNiCrCheckbox) hasNiCrCheckbox.checked = true;
-        } else {
-            if (niCrInput) niCrInput.disabled = true;
-            if (hasNiCrCheckbox) hasNiCrCheckbox.checked = false;
         }
 
         switchTab('write-tab');
-        // Note: autoExpandToFitScreen is now handled by switchTab()
         showMessage(t('messages.copySuccess'), 'ok');
     }
     function saveFormAsJson() { const data = getFormData(); const jsonString = JSON.stringify(data, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; const today = new Date().toISOString().slice(0, 10); a.download = `thixx-${today}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => { URL.revokeObjectURL(url); }, CONFIG.URL_REVOKE_DELAY); showMessage(t('messages.saveSuccess'), 'ok'); }
