@@ -9,8 +9,8 @@
 
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
-// Cache-Version - v16: Original Status/StatusText bei PDF-Responses übernehmen
-const CORE_CACHE_NAME = 'thixx-oth-core-v16';
+// Cache-Version - v17: Fix Datenschutz/Impressum Links für alle Mandanten
+const CORE_CACHE_NAME = 'thixx-oth-core-v17';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // Core Assets für Offline-Verfügbarkeit
@@ -27,7 +27,16 @@ const CORE_ASSETS = [
     `${REPO_PATH}lang/de.json`,
     `${REPO_PATH}lang/en.json`,
     `${REPO_PATH}lang/es.json`,
-    `${REPO_PATH}lang/fr.json`
+    `${REPO_PATH}lang/fr.json`,
+    // Mandanten-spezifische Rechtsseiten
+    `${REPO_PATH}branding/othimm/datenschutz.html`,
+    `${REPO_PATH}branding/othimm/impressum.html`,
+    `${REPO_PATH}branding/peterpohl/datenschutz.html`,
+    `${REPO_PATH}branding/peterpohl/impressum.html`,
+    `${REPO_PATH}branding/sigx/datenschutz.html`,
+    `${REPO_PATH}branding/sigx/impressum.html`,
+    `${REPO_PATH}branding/thixx_standard/datenschutz.html`,
+    `${REPO_PATH}branding/thixx_standard/impressum.html`
 ];
 
 async function safeCacheAddAll(cache, urls) {
@@ -155,22 +164,27 @@ self.addEventListener('fetch', (event) => {
     // Navigation-Requests - nur für eigenen Origin
     // Verhindert, dass der SW externe Navigationen abfängt
     if (request.mode === 'navigate' && url.origin === self.location.origin) {
-        // HTML-Seiten aus assets/ (z.B. Datenschutzerklärung)
-        if (url.pathname.startsWith(`${REPO_PATH}assets/`) && url.pathname.endsWith('.html')) {
+        // HTML-Seiten aus assets/ oder branding/ (z.B. Datenschutzerklärung, Impressum)
+        const isAssetHtml = url.pathname.startsWith(`${REPO_PATH}assets/`) && url.pathname.endsWith('.html');
+        const isBrandingHtml = url.pathname.startsWith(`${REPO_PATH}branding/`) && url.pathname.endsWith('.html');
+
+        if (isAssetHtml || isBrandingHtml) {
             event.respondWith((async () => {
                 const cache = await caches.open(CORE_CACHE_NAME);
 
                 try {
+                    // Network First: Lade vom Netzwerk und aktualisiere Cache
                     const networkResponse = await fetch(request);
                     cache.put(request, networkResponse.clone());
                     return networkResponse;
                 } catch (error) {
+                    // Fallback: Versuche aus Cache
                     const cachedResponse = await cache.match(request);
                     if (cachedResponse) {
                         return cachedResponse;
                     }
 
-                    console.log('[Service Worker] Navigate fetch failed for legal page, falling back to offline page.');
+                    console.log('[Service Worker] Navigate fetch failed for static HTML, falling back to offline page.');
                     return await caches.match(`${REPO_PATH}offline.html`);
                 }
             })());
