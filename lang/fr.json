@@ -36,6 +36,7 @@
     "imprintTitle": "Mentions Légales",
     "privacyPolicyLink": "Politique de Confidentialité",
     "checkForUpdate": "Vérifier les Mises à Jour",
+    "clearCache": "Vider le Cache",
     "nfcFallback": "Web NFC n'est pas pris en charge sur cet appareil.",
     "updateAvailable": "Une nouvelle mise à jour est disponible !",
     "updateReload": "Recharger",
@@ -67,7 +68,10 @@
         "docCachingStarted": "La documentation est en cours d'enregistrement pour une utilisation hors ligne...",
         "payloadTooLarge": "Les données sont trop volumineuses pour un tag NFC standard !",
         "updateChecking": "Recherche de mises à jour...",
-        "noUpdateFound": "Aucune nouvelle mise à jour trouvée."
+        "noUpdateFound": "Aucune nouvelle mise à jour trouvée.",
+        "cacheClearing": "Vidage du cache...",
+        "cacheClearSuccess": "Cache vidé avec succès ! La page va se recharger.",
+        "cacheClearConfirm": "Voulez-vous vraiment supprimer toutes les données en cache (y compris les modes d'emploi) ?"
     },
     "errors": {
         "NotAllowedError": "L'autorisation pour le NFC a été refusée.",
