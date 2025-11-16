@@ -41,10 +41,10 @@
     "updateAvailable": "A new update is available!",
     "updateReload": "Reload",
     "placeholderRead": "Please hold an NFC tag to your device to display the data here.",
-    "docOpenOffline": "Operating Manual",
-    "docDownload": "Operating Manual",
-    "docDownloadLater": "Operating Manual",
-    "docDownloadPending": "Operating Manual",
+    "docOpenOffline": "Open Operating Manual",
+    "docDownload": "Download Operating Manual",
+    "docDownloadLater": "Download will sync when online",
+    "docDownloadPending": "Download pending",
     "status": {
         "iosRead": "Hold tag to device to read",
         "startWriting": "Ready. Tap to write.",
@@ -72,7 +72,11 @@
         "noUpdateFound": "No new update found.",
         "cacheClearing": "Clearing cache...",
         "cacheClearSuccess": "Cache cleared successfully! The page will reload.",
-        "cacheClearConfirm": "Do you really want to delete all cached data (including operating manuals)?"
+        "cacheClearConfirm": "Do you really want to delete all cached data (including operating manuals)?",
+        "docQueuedForDownload": "Download will be synced automatically when connection is restored",
+        "docDownloadCompleted": "Operating manual successfully downloaded and is now available offline",
+        "docSyncInProgress": "Syncing pending downloads...",
+        "docSyncCompleted": "All pending downloads completed"
     },
     "errors": {
         "NotAllowedError": "Permission for NFC was denied.",
