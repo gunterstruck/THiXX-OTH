@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateBanner = document.getElementById('update-banner');
     const reloadButton = document.getElementById('reload-button');
     const checkForUpdateBtn = document.getElementById('check-for-update-btn');
+    const clearCacheBtn = document.getElementById('clear-cache-btn');
 
     // --- Data Mapping ---
     const fieldMap = { 'HK-Nr': 'HK', 'KKS': 'KKS', 'Leistung': 'P', 'Strom': 'I', 'Spannung': 'U', 'Widerstand': 'R', 'Regler': 'Reg', 'Sicherheitsregler/Begrenzer': 'Sich', 'Wächter': 'Wäch', 'Projekt-Nr': 'Proj', 'Anzahl Heizkabeleinheiten': 'Anz', 'Trennkasten': 'TB', 'Heizkabeltyp': 'HKT', 'Schaltung': 'Sch', 'PT 100': 'PT100', 'NiCr-Ni': 'NiCr', 'geprüft von': 'Chk', 'am': 'Date', 'Dokumentation': 'Doc' };
@@ -221,12 +222,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const handleClearCache = async () => {
+        const confirmMessage = t('messages.cacheClearConfirm');
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            showMessage(t('messages.cacheClearing'), 'info');
+
+            // Clear all caches
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)));
+                console.log('[App] All caches cleared:', cacheNames);
+            }
+
+            // Unregister service worker
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                await Promise.all(registrations.map(registration => registration.unregister()));
+                console.log('[App] Service workers unregistered');
+            }
+
+            showMessage(t('messages.cacheClearSuccess'), 'ok');
+
+            // Reload page after short delay
+            setTimeout(() => {
+                window.location.reload(true);
+            }, 1500);
+        } catch (error) {
+            console.error('[App] Error clearing cache:', error);
+            showMessage('Error clearing cache: ' + error.message, 'err');
+        }
+    };
+
     function setupEventListeners() {
         if(tabsContainer) tabsContainer.addEventListener('click', handleTabClick);
         if(themeSwitcher) themeSwitcher.addEventListener('click', handleThemeChange);
         if(nfcStatusBadge) nfcStatusBadge.addEventListener('click', handleNfcAction);
         if(checkForUpdateBtn) checkForUpdateBtn.addEventListener('click', handleCheckForUpdate);
-        
+        if(clearCacheBtn) clearCacheBtn.addEventListener('click', handleClearCache);
+
         if (!isIOS()) {
             if (copyToFormBtn) {
                 copyToFormBtn.addEventListener('click', populateFormFromScan);

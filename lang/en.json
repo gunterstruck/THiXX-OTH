@@ -36,6 +36,7 @@
     "imprintTitle": "Imprint",
     "privacyPolicyLink": "Privacy Policy",
     "checkForUpdate": "Check for Updates",
+    "clearCache": "Clear Cache",
     "nfcFallback": "Web NFC is not supported on this device.",
     "updateAvailable": "A new update is available!",
     "updateReload": "Reload",
@@ -68,7 +69,10 @@
         "docCachingStarted": "Documentation is being saved for offline use...",
         "payloadTooLarge": "Data is too large for a standard NFC tag!",
         "updateChecking": "Checking for updates...",
-        "noUpdateFound": "No new update found."
+        "noUpdateFound": "No new update found.",
+        "cacheClearing": "Clearing cache...",
+        "cacheClearSuccess": "Cache cleared successfully! The page will reload.",
+        "cacheClearConfirm": "Do you really want to delete all cached data (including operating manuals)?"
     },
     "errors": {
         "NotAllowedError": "Permission for NFC was denied.",

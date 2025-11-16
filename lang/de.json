@@ -36,6 +36,7 @@
     "imprintTitle": "Impressum",
     "privacyPolicyLink": "Datenschutzerklärung",
     "checkForUpdate": "Auf Updates prüfen",
+    "clearCache": "Cache löschen",
     "nfcFallback": "Web NFC wird auf diesem Gerät nicht unterstützt.",
     "updateAvailable": "Ein neues Update ist verfügbar!",
     "updateReload": "Neu laden",
@@ -67,7 +68,10 @@
         "docCachingStarted": "Dokumentation wird für Offline-Nutzung gespeichert...",
         "payloadTooLarge": "Daten sind zu groß für einen Standard-NFC-Tag!",
         "updateChecking": "Suche nach Updates...",
-        "noUpdateFound": "Kein neues Update gefunden."
+        "noUpdateFound": "Kein neues Update gefunden.",
+        "cacheClearing": "Cache wird gelöscht...",
+        "cacheClearSuccess": "Cache erfolgreich gelöscht! Die Seite wird neu geladen.",
+        "cacheClearConfirm": "Möchten Sie wirklich alle zwischengespeicherten Daten (inkl. Betriebsanleitungen) löschen?"
     },
     "errors": {
         "NotAllowedError": "Die Berechtigung für NFC wurde verweigert.",
