@@ -454,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderLog() { if (!eventLogOutput) return; eventLogOutput.innerHTML = ''; appState.eventLog.forEach(entry => { const div = document.createElement('div'); div.className = `log-entry ${entry.type}`; const timestamp = document.createElement('span'); timestamp.className = 'log-timestamp'; timestamp.textContent = entry.timestamp; const message = document.createTextNode(` ${entry.message}`); div.appendChild(timestamp); div.appendChild(message); eventLogOutput.appendChild(div); }); }
 
     // --- Service Worker & Cache ---
-    async function isUrlCached(url) { if (!('caches' in window)) return false; try { const cache = await caches.open('thixx-docs-v1'); const request = new Request(url, { mode: 'no-cors' }); const response = await cache.match(request); return !!response; } catch (error) { console.error("Cache check failed:", error); return false; } }
+    async function isUrlCached(url) { if (!('caches' in window)) return false; try { const cache = await caches.open('thixx-oth-docs-default'); const request = new Request(url, { mode: 'no-cors' }); const response = await cache.match(request); return !!response; } catch (error) { console.error("Cache check failed:", error); return false; } }
 
     // --- Background Sync & Download Queue Management ---
     const PENDING_DOWNLOADS_KEY = 'thixx-pending-downloads';
