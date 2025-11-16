@@ -9,8 +9,8 @@
 
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
-// Cache-Version - v17: Fix Datenschutz/Impressum Links für alle Mandanten
-const CORE_CACHE_NAME = 'thixx-oth-core-v17';
+// Cache-Version - v18: Fix Offline PDF-Caching (Network-First mit automatischem Caching wie PPS)
+const CORE_CACHE_NAME = 'thixx-oth-core-v18';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // Core Assets für Offline-Verfügbarkeit
@@ -81,83 +81,40 @@ self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // PDF-Caching-Logik - PDFs werden bei Bedarf gecacht
-    // MODIFIZIERT: PDFs werden mit 'inline' statt 'attachment' ausgeliefert
-    // SICHERHEIT: Robuster Umgang mit cross-origin PDFs (opaque responses)
+    // PDF-Caching-Logik - Network-First mit automatischem Caching
+    // Basiert auf PPS-Implementierung für konsistente Offline-Verfügbarkeit
     if (url.pathname.endsWith('.pdf')) {
-        event.respondWith((async () => {
-            const allCacheNames = await caches.keys();
-            const docCacheNames = allCacheNames.filter(name => name.startsWith(DOC_CACHE_PREFIX));
-            let pdfResponse = null;
+        event.respondWith(
+            caches.open(`${DOC_CACHE_PREFIX}-default`).then(async (cache) => {
+                // Verwende no-cors Request für konsistentes Caching
+                const noCorsRequest = new Request(request.url, { mode: 'no-cors' });
 
-            // 1. Versuche, die PDF aus allen Dokument-Caches zu finden
-            // Cache-Match funktioniert mit beiden Request-Typen
-            for (const cacheName of docCacheNames) {
-                const cache = await caches.open(cacheName);
-                pdfResponse = await cache.match(request);
-                if (pdfResponse) {
-                    console.log(`[SW] PDF aus Cache gefunden: ${cacheName}`);
-                    break;
-                }
-            }
-
-            // 2. Nicht im Cache? Vom Netzwerk holen
-            if (!pdfResponse) {
-                console.log('[SW] PDF nicht im Cache, hole vom Netzwerk...');
                 try {
-                    // Verwende originalen Request (keine mode-Änderung)
-                    pdfResponse = await fetch(request);
+                    // NETWORK FIRST: Versuche vom Netzwerk zu laden
+                    console.log('[SW] Lade PDF vom Netzwerk:', request.url);
+                    const networkResponse = await fetch(noCorsRequest);
+
+                    // SOFORT CACHEN: Speichere PDF für Offline-Verfügbarkeit
+                    cache.put(noCorsRequest, networkResponse.clone());
+                    console.log('[SW] PDF erfolgreich gecacht:', request.url);
+
+                    return networkResponse;
                 } catch (error) {
-                    console.log('[Service Worker] Netzwerk-Fetch für PDF fehlgeschlagen, zeige Offline-Seite.');
-                    return await caches.match(`${REPO_PATH}offline.html`);
-                }
-            }
+                    // CACHE FALLBACK: Bei Netzwerkfehler aus Cache laden
+                    console.log('[SW] Netzwerk-Fetch fehlgeschlagen, versuche Cache...');
+                    const cachedResponse = await cache.match(noCorsRequest);
 
-            // 3. WICHTIG: Prüfe, ob Response opaque ist (cross-origin no-cors)
-            if (pdfResponse && pdfResponse.type === 'opaque') {
-                // Opaque Response: Kann nicht gelesen/modifiziert werden
-                // Gebe sie direkt zurück (Content-Disposition kann nicht überschrieben werden)
-                console.log('[SW] PDF ist cross-origin (opaque), gebe unmodifiziert zurück');
-                return pdfResponse;
-            }
-
-            // 4. Same-Origin PDF: Header überschreiben für inline-Anzeige
-            // Dies zwingt den Browser, die PDF anzuzeigen statt herunterzuladen
-            if (pdfResponse) {
-                try {
-                    // Klonen, da der Body nur einmal gelesen werden kann
-                    const pdfBody = await pdfResponse.clone().blob();
-
-                    // Neue Header erstellen (bestehende beibehalten)
-                    const headers = new Headers(pdfResponse.headers);
-                    headers.set('Content-Type', 'application/pdf');
-                    headers.set('Content-Disposition', 'inline'); // 'inline' statt 'attachment'
-
-                    // Content-Length nur überschreiben, wenn nicht vorhanden
-                    if (!headers.has('Content-Length')) {
-                        headers.set('Content-Length', pdfBody.size);
+                    if (cachedResponse) {
+                        console.log('[SW] PDF aus Cache geladen:', request.url);
+                        return cachedResponse;
                     }
 
-                    // Encoding-Header entfernen, da wir den Body neu aufgebaut haben
-                    headers.delete('Content-Encoding');
-
-                    // Neue Response mit den modifizierten Headern zurückgeben
-                    // Übernehme Original-Status (z.B. 206 für Partial Content)
-                    return new Response(pdfBody, {
-                        status: pdfResponse.status,
-                        statusText: pdfResponse.statusText,
-                        headers: headers
-                    });
-                } catch (error) {
-                    // Fallback: Bei Fehler beim Lesen des Body, gebe Original zurück
-                    console.warn('[SW] Konnte PDF-Body nicht lesen, gebe Original zurück:', error);
-                    return pdfResponse;
+                    // Kein Cache verfügbar: Zeige Offline-Seite
+                    console.log('[SW] PDF nicht im Cache, zeige Offline-Seite');
+                    return await caches.match(`${REPO_PATH}offline.html`);
                 }
-            }
-
-            // Fallback, sollte nie erreicht werden
-            return await caches.match(`${REPO_PATH}offline.html`);
-        })());
+            })
+        );
         return;
     }
     
@@ -263,16 +220,9 @@ self.addEventListener('message', (event) => {
         event.waitUntil(
             caches.open(docCacheName)
                 .then(cache => {
-                    // Verwende fetch statt cache.add für bessere Kontrolle
-                    return fetch(url)
-                        .then(response => {
-                            if (response.ok || response.type === 'opaque') {
-                                // Nur erfolgreiche oder opaque Responses cachen
-                                return cache.put(url, response);
-                            } else {
-                                console.warn(`[SW Message] Nicht-OK Response für ${url}: ${response.status}`);
-                            }
-                        });
+                    // Verwende no-cors Request für konsistentes Caching (wie im Fetch Handler)
+                    const noCorsRequest = new Request(url, { mode: 'no-cors' });
+                    return cache.add(noCorsRequest);
                 })
                 .catch(err => {
                     console.error('[SW Message] Dokument-Caching fehlgeschlagen:', url, err);
@@ -307,16 +257,9 @@ self.addEventListener('sync', (event) => {
             caches.open(docCacheName)
                 .then(cache => {
                     console.log(`[SW Sync] Caching ${urlToCache} in ${docCacheName}`);
-                    // Verwende fetch + put statt cache.add für bessere Kontrolle
-                    return fetch(urlToCache)
-                        .then(response => {
-                            if (response.ok || response.type === 'opaque') {
-                                // Nur erfolgreiche oder opaque Responses cachen
-                                return cache.put(urlToCache, response);
-                            } else {
-                                throw new Error(`Non-OK response: ${response.status}`);
-                            }
-                        });
+                    // Verwende no-cors Request für konsistentes Caching (wie im Fetch Handler)
+                    const noCorsRequest = new Request(urlToCache, { mode: 'no-cors' });
+                    return cache.add(noCorsRequest);
                 })
                 .then(() => {
                     console.log(`[SW Sync] Successfully cached ${urlToCache}`);
