@@ -10,7 +10,7 @@
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
 // Cache-Version - erhöht nach Bugfix
-const CORE_CACHE_NAME = 'thixx-oth-core-v101';
+const CORE_CACHE_NAME = 'thixx-oth-core-v102';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // Core Assets für Offline-Verfügbarkeit
@@ -301,5 +301,6 @@ async function syncPendingDownloads() {
         console.error('[Service Worker] Background sync failed:', error);
     }
 }
+
 
 
