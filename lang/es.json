@@ -41,10 +41,10 @@
     "updateAvailable": "¡Hay una nueva actualización disponible!",
     "updateReload": "Recargar",
     "placeholderRead": "Por favor, acerque una etiqueta NFC a su dispositivo para ver los datos aquí.",
-    "docOpenOffline": "Manual de instrucciones",
-    "docDownload": "Manual de instrucciones",
-    "docDownloadLater": "Manual de instrucciones",
-    "docDownloadPending": "Manual de instrucciones",
+    "docOpenOffline": "Abrir manual de instrucciones",
+    "docDownload": "Descargar manual de instrucciones",
+    "docDownloadLater": "Descarga se sincronizará en línea",
+    "docDownloadPending": "Descarga pendiente",
     "status": {
         "iosRead": "Acerque la etiqueta para leer",
         "startWriting": "Listo. Toque para escribir.",
@@ -71,7 +71,11 @@
         "noUpdateFound": "No se encontraron nuevas actualizaciones.",
         "cacheClearing": "Limpiando caché...",
         "cacheClearSuccess": "¡Caché limpiado con éxito! La página se recargará.",
-        "cacheClearConfirm": "¿Realmente desea eliminar todos los datos en caché (incluidos los manuales de instrucciones)?"
+        "cacheClearConfirm": "¿Realmente desea eliminar todos los datos en caché (incluidos los manuales de instrucciones)?",
+        "docQueuedForDownload": "La descarga se sincronizará automáticamente cuando se restablezca la conexión",
+        "docDownloadCompleted": "Manual de instrucciones descargado con éxito y ahora disponible sin conexión",
+        "docSyncInProgress": "Sincronizando descargas pendientes...",
+        "docSyncCompleted": "Todas las descargas pendientes completadas"
     },
     "errors": {
         "NotAllowedError": "Se denegó el permiso para NFC.",

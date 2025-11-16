@@ -195,10 +195,110 @@ self.addEventListener('message', (event) => {
         event.waitUntil(
             caches.open(docCacheName)
                 .then(cache => cache.add(new Request(event.data.url, { mode: 'no-cors' })))
+                .then(() => {
+                    console.log('[Service Worker] Document cached successfully:', event.data.url);
+                    // Notify all clients that the document was cached
+                    return self.clients.matchAll();
+                })
+                .then(clients => {
+                    clients.forEach(client => {
+                        client.postMessage({
+                            type: 'DOC_CACHED',
+                            url: event.data.url
+                        });
+                    });
+                })
                 .catch(err => console.error('[Service Worker] Failed to cache doc:', err))
         );
     } else if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
 });
+
+// Background Sync Event Handler
+self.addEventListener('sync', (event) => {
+    console.log('[Service Worker] Sync event received:', event.tag);
+
+    if (event.tag === 'sync-pending-downloads') {
+        event.waitUntil(syncPendingDownloads());
+    }
+});
+
+async function syncPendingDownloads() {
+    console.log('[Service Worker] Starting background sync for pending downloads...');
+
+    try {
+        // Get all clients to access localStorage through them
+        const clients = await self.clients.matchAll();
+
+        if (clients.length === 0) {
+            console.log('[Service Worker] No clients available for sync');
+            return;
+        }
+
+        // Request pending downloads from the first client
+        const client = clients[0];
+
+        // Post message to client to get pending downloads
+        const channel = new MessageChannel();
+
+        const pendingDownloads = await new Promise((resolve) => {
+            channel.port1.onmessage = (event) => {
+                resolve(event.data.pendingDownloads || []);
+            };
+
+            client.postMessage({
+                type: 'GET_PENDING_DOWNLOADS'
+            }, [channel.port2]);
+
+            // Timeout after 5 seconds
+            setTimeout(() => resolve([]), 5000);
+        });
+
+        if (pendingDownloads.length === 0) {
+            console.log('[Service Worker] No pending downloads to sync');
+            return;
+        }
+
+        console.log(`[Service Worker] Found ${pendingDownloads.length} pending download(s)`);
+
+        const tenant = 'default';
+        const docCacheName = `${DOC_CACHE_PREFIX}-${tenant}`;
+        const cache = await caches.open(docCacheName);
+
+        let successCount = 0;
+
+        for (const url of pendingDownloads) {
+            try {
+                const noCorsRequest = new Request(url, { mode: 'no-cors' });
+                await cache.add(noCorsRequest);
+                successCount++;
+                console.log('[Service Worker] Successfully cached:', url);
+
+                // Notify clients about successful cache
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'DOC_SYNCED',
+                        url: url
+                    });
+                });
+            } catch (error) {
+                console.error('[Service Worker] Failed to cache during sync:', url, error);
+            }
+        }
+
+        console.log(`[Service Worker] Background sync completed: ${successCount}/${pendingDownloads.length} successful`);
+
+        // Notify clients that sync is complete
+        clients.forEach(client => {
+            client.postMessage({
+                type: 'SYNC_COMPLETE',
+                successCount: successCount
+            });
+        });
+
+    } catch (error) {
+        console.error('[Service Worker] Background sync failed:', error);
+    }
+}
 

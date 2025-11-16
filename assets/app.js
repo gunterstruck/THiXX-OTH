@@ -455,7 +455,182 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Service Worker & Cache ---
     async function isUrlCached(url) { if (!('caches' in window)) return false; try { const cache = await caches.open('thixx-docs-v1'); const request = new Request(url, { mode: 'no-cors' }); const response = await cache.match(request); return !!response; } catch (error) { console.error("Cache check failed:", error); return false; } }
-    async function handleDocButtonClick(event) { const button = event.target; const url = button.dataset.url; if (navigator.onLine) { window.open(url, '_blank'); button.textContent = t('docOpenOffline'); button.onclick = () => window.open(url, '_blank'); if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage({ action: 'cache-doc', url: url }); } } else { showMessage(t('docDownloadLater'), 'info'); button.textContent = t('docDownloadPending'); button.disabled = true; } }
+
+    // --- Background Sync & Download Queue Management ---
+    const PENDING_DOWNLOADS_KEY = 'thixx-pending-downloads';
+
+    function getPendingDownloads() {
+        try {
+            const pending = localStorage.getItem(PENDING_DOWNLOADS_KEY);
+            return pending ? JSON.parse(pending) : [];
+        } catch (error) {
+            console.error('[App] Failed to get pending downloads:', error);
+            return [];
+        }
+    }
+
+    function addPendingDownload(url) {
+        try {
+            const pending = getPendingDownloads();
+            if (!pending.includes(url)) {
+                pending.push(url);
+                localStorage.setItem(PENDING_DOWNLOADS_KEY, JSON.stringify(pending));
+                console.log('[App] Added to download queue:', url);
+            }
+        } catch (error) {
+            console.error('[App] Failed to add pending download:', error);
+        }
+    }
+
+    function removePendingDownload(url) {
+        try {
+            const pending = getPendingDownloads();
+            const updated = pending.filter(item => item !== url);
+            localStorage.setItem(PENDING_DOWNLOADS_KEY, JSON.stringify(updated));
+            console.log('[App] Removed from download queue:', url);
+        } catch (error) {
+            console.error('[App] Failed to remove pending download:', error);
+        }
+    }
+
+    async function registerBackgroundSync() {
+        if ('serviceWorker' in navigator && 'sync' in navigator.serviceWorker) {
+            try {
+                const registration = await navigator.serviceWorker.ready;
+                await registration.sync.register('sync-pending-downloads');
+                console.log('[App] Background Sync registered');
+                return true;
+            } catch (error) {
+                console.warn('[App] Background Sync registration failed:', error);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    async function processPendingDownloads() {
+        if (!navigator.onLine) {
+            console.log('[App] Offline - cannot process pending downloads');
+            return;
+        }
+
+        const pending = getPendingDownloads();
+        if (pending.length === 0) {
+            console.log('[App] No pending downloads to process');
+            return;
+        }
+
+        console.log(`[App] Processing ${pending.length} pending download(s)...`);
+        showMessage(t('messages.docSyncInProgress'), 'info');
+
+        let successCount = 0;
+
+        for (const url of pending) {
+            try {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        action: 'cache-doc',
+                        url: url
+                    });
+
+                    // Wait a bit to allow the caching to complete
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+
+                    // Check if it's now cached
+                    const isCached = await isUrlCached(url);
+                    if (isCached) {
+                        removePendingDownload(url);
+                        successCount++;
+                        console.log('[App] Successfully cached:', url);
+
+                        // Update button if it's visible
+                        updateDocButtonIfVisible(url);
+                    }
+                }
+            } catch (error) {
+                console.error('[App] Failed to cache pending download:', url, error);
+            }
+        }
+
+        if (successCount > 0) {
+            showMessage(t('messages.docDownloadCompleted'), 'ok');
+            addLogEntry(`${successCount} Dokument(e) erfolgreich heruntergeladen`, 'ok');
+        }
+    }
+
+    function updateDocButtonIfVisible(url) {
+        const button = document.querySelector(`.doc-link-btn[data-url="${url}"]`);
+        if (button) {
+            button.textContent = t('docOpenOffline');
+            button.disabled = false;
+            button.onclick = () => window.open(url, '_blank');
+        }
+    }
+
+    async function handleDocButtonClick(event) {
+        const button = event.target;
+        const url = button.dataset.url;
+
+        if (navigator.onLine) {
+            window.open(url, '_blank');
+            button.textContent = t('docOpenOffline');
+            button.onclick = () => window.open(url, '_blank');
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    action: 'cache-doc',
+                    url: url
+                });
+            }
+        } else {
+            // OFFLINE: Queue for background sync
+            addPendingDownload(url);
+
+            // Try to register background sync
+            const syncRegistered = await registerBackgroundSync();
+
+            showMessage(t('messages.docQueuedForDownload'), 'info');
+            button.textContent = t('docDownloadPending');
+            button.disabled = true;
+
+            addLogEntry(`Download in Warteschlange: ${url}`, 'info');
+        }
+    }
+
+    // Listen for online event to process pending downloads
+    window.addEventListener('online', () => {
+        console.log('[App] Connection restored, processing pending downloads...');
+        setTimeout(() => {
+            processPendingDownloads();
+        }, 1000); // Small delay to ensure connection is stable
+    });
+
+    // Listen for messages from Service Worker
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            const { type, url, successCount } = event.data;
+
+            if (type === 'GET_PENDING_DOWNLOADS') {
+                // Service Worker requests pending downloads
+                const pending = getPendingDownloads();
+                event.ports[0].postMessage({ pendingDownloads: pending });
+            } else if (type === 'DOC_SYNCED') {
+                // A document was successfully synced
+                console.log('[App] Document synced:', url);
+                removePendingDownload(url);
+                updateDocButtonIfVisible(url);
+            } else if (type === 'SYNC_COMPLETE') {
+                // Background sync completed
+                console.log('[App] Background sync completed:', successCount, 'downloads');
+                if (successCount > 0) {
+                    showMessage(t('messages.docDownloadCompleted'), 'ok');
+                    addLogEntry(`${successCount} Dokument(e) erfolgreich heruntergeladen`, 'ok');
+                }
+            } else if (type === 'DOC_CACHED') {
+                // Document was cached (from proactive caching)
+                console.log('[App] Document cached:', url);
+            }
+        });
+    }
 
     // --- UI/UX Functions ---
     function updateManifest(design) { const manifestLink = document.querySelector('link[rel="manifest"]'); if (!manifestLink) return; const oldHref = manifestLink.href; if (oldHref && oldHref.startsWith('blob:')) { URL.revokeObjectURL(oldHref); } const newManifest = { name: design.appName, short_name: design.short_name, start_url: "/THiXX-OTH/index.html", scope: "/THiXX-OTH/", display: "standalone", background_color: "#ffffff", theme_color: design.brandColors.primary || "#f04e37", orientation: "portrait-primary", icons: [{ src: design.icons.icon192, sizes: "192x192", type: "image/png" }, { src: design.icons.icon512, sizes: "512x512", type: "image/png" }] }; const blob = new Blob([JSON.stringify(newManifest)], { type: 'application/json' }); manifestLink.href = URL.createObjectURL(blob); }

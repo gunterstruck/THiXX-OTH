@@ -41,10 +41,10 @@
     "updateAvailable": "Une nouvelle mise à jour est disponible !",
     "updateReload": "Recharger",
     "placeholderRead": "Veuillez approcher une étiquette NFC de votre appareil pour afficher les données ici.",
-    "docOpenOffline": "Mode d'emploi",
-    "docDownload": "Mode d'emploi",
-    "docDownloadLater": "Mode d'emploi",
-    "docDownloadPending": "Mode d'emploi",
+    "docOpenOffline": "Ouvrir le mode d'emploi",
+    "docDownload": "Télécharger le mode d'emploi",
+    "docDownloadLater": "Téléchargement se synchronisera en ligne",
+    "docDownloadPending": "Téléchargement en attente",
     "status": {
         "iosRead": "Approchez l'étiquette pour lire",
         "startWriting": "Prêt. Appuyez pour écrire.",
@@ -71,7 +71,11 @@
         "noUpdateFound": "Aucune nouvelle mise à jour trouvée.",
         "cacheClearing": "Vidage du cache...",
         "cacheClearSuccess": "Cache vidé avec succès ! La page va se recharger.",
-        "cacheClearConfirm": "Voulez-vous vraiment supprimer toutes les données en cache (y compris les modes d'emploi) ?"
+        "cacheClearConfirm": "Voulez-vous vraiment supprimer toutes les données en cache (y compris les modes d'emploi) ?",
+        "docQueuedForDownload": "Le téléchargement sera synchronisé automatiquement lors du rétablissement de la connexion",
+        "docDownloadCompleted": "Mode d'emploi téléchargé avec succès et maintenant disponible hors ligne",
+        "docSyncInProgress": "Synchronisation des téléchargements en attente...",
+        "docSyncCompleted": "Tous les téléchargements en attente sont terminés"
     },
     "errors": {
         "NotAllowedError": "L'autorisation pour le NFC a été refusée.",

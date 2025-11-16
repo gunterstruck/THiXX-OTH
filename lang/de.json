@@ -41,10 +41,10 @@
     "updateAvailable": "Ein neues Update ist verfügbar!",
     "updateReload": "Neu laden",
     "placeholderRead": "Bitte halten Sie einen NFC-Tag an Ihr Gerät, um die Daten hier anzuzeigen.",
-    "docOpenOffline": "Betriebsanleitung",
-    "docDownload": "Betriebsanleitung",
-    "docDownloadLater": "Betriebsanleitung",
-    "docDownloadPending": "Betriebsanleitung",
+    "docOpenOffline": "Betriebsanleitung öffnen",
+    "docDownload": "Betriebsanleitung herunterladen",
+    "docDownloadLater": "Download wird bei Online-Verbindung nachgeholt",
+    "docDownloadPending": "Download ausstehend",
     "status": {
         "iosRead": "Zum Lesen Tag an Gerät halten",
         "startWriting": "Bereit. Zum Schreiben tippen.",
@@ -71,7 +71,11 @@
         "noUpdateFound": "Kein neues Update gefunden.",
         "cacheClearing": "Cache wird gelöscht...",
         "cacheClearSuccess": "Cache erfolgreich gelöscht! Die Seite wird neu geladen.",
-        "cacheClearConfirm": "Möchten Sie wirklich alle zwischengespeicherten Daten (inkl. Betriebsanleitungen) löschen?"
+        "cacheClearConfirm": "Möchten Sie wirklich alle zwischengespeicherten Daten (inkl. Betriebsanleitungen) löschen?",
+        "docQueuedForDownload": "Download wird bei nächster Online-Verbindung automatisch nachgeholt",
+        "docDownloadCompleted": "Betriebsanleitung wurde erfolgreich heruntergeladen und ist jetzt offline verfügbar",
+        "docSyncInProgress": "Ausstehende Downloads werden synchronisiert...",
+        "docSyncCompleted": "Alle ausstehenden Downloads wurden abgeschlossen"
     },
     "errors": {
         "NotAllowedError": "Die Berechtigung für NFC wurde verweigert.",
