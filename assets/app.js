@@ -183,7 +183,16 @@ document.addEventListener('DOMContentLoaded', () => {
         setTodaysDate();
         checkNfcSupport();
         initCollapsibles();
-        
+
+        // iOS-specific: Check for pending downloads on app start (new instance each time)
+        if (isIOS() && navigator.onLine) {
+            const pending = getPendingDownloads();
+            if (pending.length > 0) {
+                console.log('[App] iOS: Found pending downloads on start, processing...');
+                setTimeout(() => processPendingDownloads(), 2000); // Delay to ensure SW is ready
+            }
+        }
+
         if (!processUrlParameters()) {
             setupReadTabInitialState();
             switchTab('read-tab');
@@ -341,6 +350,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 addLogEntry(t('messages.docCachingStarted') || 'Dokumentation wird im Hintergrund geladen...', 'info');
             } catch (error) {
                 console.warn('[App] Proaktives Caching fehlgeschlagen:', error);
+            }
+        }
+
+        // iOS-specific: Check for pending downloads whenever a tag is read
+        if (isIOS() && navigator.onLine) {
+            const pending = getPendingDownloads();
+            if (pending.length > 0) {
+                console.log('[App] iOS: Found pending downloads during tag read, processing...');
+                setTimeout(() => processPendingDownloads(), 1500);
             }
         }
     } }
@@ -518,6 +536,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pending.length === 0) {
             console.log('[App] No pending downloads to process');
             return;
+        }
+
+        // iOS-specific: Wake up Service Worker if sleeping
+        if (isIOS() && !navigator.serviceWorker.controller && 'serviceWorker' in navigator) {
+            console.log('[App] iOS: Service Worker not active, attempting to wake up...');
+            try {
+                await navigator.serviceWorker.register('/THiXX-OTH/sw.js', { scope: '/THiXX-OTH/' });
+                const registration = await navigator.serviceWorker.ready;
+                console.log('[App] iOS: Service Worker ready:', registration.scope);
+                // Wait a bit for controller to be assigned
+                await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (error) {
+                console.warn('[App] iOS: Service Worker wake-up failed:', error);
+            }
         }
 
         console.log(`[App] Processing ${pending.length} pending download(s)...`);
