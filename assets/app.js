@@ -888,17 +888,23 @@ document.addEventListener('DOMContentLoaded', () => {
                         continue;
                     }
 
-                    if (input.type === 'radio') {
+                    // RadioNodeList Behandlung: Bei Radio-Buttons gibt form.elements ein RadioNodeList zurück
+                    if (input instanceof RadioNodeList || (input.length && input[0] && input[0].type === 'radio')) {
                         const radios = form.querySelectorAll(`input[name="${key}"]`);
                         if (radios && radios.length > 0) {
                             radios.forEach(radio => {
-                                if (radio.value === value) radio.checked = true;
+                                if (radio && radio.value === value) radio.checked = true;
                             });
                         }
                     } else if (input.type === 'checkbox') {
                         input.checked = (value === 'true' || value === 'on');
                     } else {
-                        input.value = value;
+                        // Zusätzlicher Schutz: Prüfe nochmal, ob input nicht null ist und value-Property existiert
+                        if (input && typeof input.value !== 'undefined') {
+                            input.value = value;
+                        } else {
+                            console.warn(`[populateFormFromScan] Cannot set value for field "${key}" - element or value property not available`);
+                        }
                     }
                 } catch (fieldError) {
                     console.error(`[populateFormFromScan] Error setting field "${key}":`, fieldError);
@@ -913,14 +919,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hasPt100Checkbox = document.getElementById('has_PT100');
 
                 if (appState.scannedDataObject['PT 100']) {
-                    if (pt100Input) {
-                        pt100Input.value = appState.scannedDataObject['PT 100'];
+                    if (pt100Input && typeof pt100Input.value !== 'undefined') {
                         pt100Input.disabled = false;
+                        pt100Input.value = appState.scannedDataObject['PT 100'];
                     } else {
-                        console.warn('[populateFormFromScan] PT 100 input element not found');
+                        console.warn('[populateFormFromScan] PT 100 input element not found or value property unavailable');
                     }
 
-                    if (hasPt100Checkbox) {
+                    if (hasPt100Checkbox && typeof hasPt100Checkbox.checked !== 'undefined') {
                         hasPt100Checkbox.checked = true;
                     } else {
                         console.warn('[populateFormFromScan] has_PT100 checkbox not found');
@@ -940,14 +946,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hasNiCrCheckbox = document.getElementById('has_NiCr-Ni');
 
                 if (appState.scannedDataObject['NiCr-Ni']) {
-                    if (niCrInput) {
+                    if (niCrInput && typeof niCrInput.value !== 'undefined') {
                         niCrInput.disabled = false;
                         niCrInput.value = appState.scannedDataObject['NiCr-Ni'];
                     } else {
-                        console.warn('[populateFormFromScan] NiCr-Ni input element not found');
+                        console.warn('[populateFormFromScan] NiCr-Ni input element not found or value property unavailable');
                     }
 
-                    if (hasNiCrCheckbox) {
+                    if (hasNiCrCheckbox && typeof hasNiCrCheckbox.checked !== 'undefined') {
                         hasNiCrCheckbox.checked = true;
                     } else {
                         console.warn('[populateFormFromScan] has_NiCr-Ni checkbox not found');
