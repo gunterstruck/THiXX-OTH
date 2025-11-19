@@ -904,20 +904,50 @@ document.addEventListener('DOMContentLoaded', () => {
         if(form) form.reset();
         setTodaysDate();
 
+        // Spezielle Felder, die separat behandelt werden
+        const specialFields = ['PT 100', 'NiCr-Ni'];
+
         for (const [key, value] of Object.entries(appState.scannedDataObject)) {
             if(!form) continue;
-            const input = form.elements[key];
-            if (input) {
-                // RadioNodeList check FIRST (has .length property)
-                if (input.length !== undefined && input[0]?.type === 'radio') {
-                    form.querySelectorAll(`input[name="${key}"]`).forEach(radio => {
+
+            // Spezielle Felder überspringen - werden unten separat behandelt
+            if (specialFields.includes(key)) {
+                continue;
+            }
+
+            try {
+                const input = form.elements[key];
+
+                // Robuste Null-Prüfung: Element muss existieren
+                if (!input) {
+                    console.warn(`[populateFormFromScan] Element not found for key: "${key}"`);
+                    continue;
+                }
+
+                // FIX: RadioNodeList Check (Muss VOR input.type Check kommen!)
+                // Prüft, ob es eine Liste von Radio-Buttons ist (hat length, aber kein type)
+                if (input.length !== undefined && input[0] && input[0].type === 'radio') {
+                     form.querySelectorAll(`input[name="${key}"]`).forEach(radio => {
                         if (radio.value === value) radio.checked = true;
                     });
-                } else if (input.type === 'checkbox') {
+                }
+                // Fallback für einzelnen Radio-Button (selten bei Gruppen, aber möglich)
+                else if (input.type === 'radio') {
+                    // Bei einem einzelnen Radio-Button prüfen wir den Wert direkt
+                    if (input.value === value) input.checked = true;
+                }
+                // Checkbox
+                else if (input.type === 'checkbox') {
                     input.checked = (value === 'true' || value === 'on');
-                } else {
+                }
+                // Standard (Text, Number, Date, etc.)
+                else {
                     input.value = value;
                 }
+
+            } catch (fieldError) {
+                console.error(`[populateFormFromScan] Error setting field "${key}":`, fieldError);
+                addLogEntry(`Fehler beim Setzen von Feld "${key}"`, 'err');
             }
         }
 
