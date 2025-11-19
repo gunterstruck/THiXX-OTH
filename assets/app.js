@@ -908,8 +908,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!form) continue;
             const input = form.elements[key];
             if (input) {
-                // RadioNodeList check FIRST (has .length property)
-                if (input.length !== undefined && input[0]?.type === 'radio') {
+                if (input.length !== undefined && input[0] && input[0].type === 'radio') {
+                    form.querySelectorAll(`input[name="${key}"]`).forEach(radio => {
+                        if (radio.value === value) radio.checked = true;
+                    });
+                } else if (input.type === 'radio') {
                     form.querySelectorAll(`input[name="${key}"]`).forEach(radio => {
                         if (radio.value === value) radio.checked = true;
                     });
