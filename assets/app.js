@@ -186,11 +186,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // iOS-specific: Check for pending downloads on app start (new instance each time)
         if (isIOS() && navigator.onLine) {
-            const pending = getPendingDownloads();
+            const pending = await getPendingDownloads();
             if (pending.length > 0) {
                 console.log('[App] iOS: Found pending downloads on start, processing...');
                 setTimeout(() => processPendingDownloads(), 2000); // Delay to ensure SW is ready
             }
+        }
+
+        // ROBUSTNESS: Re-register Background Sync on app start (Recovery after Force Close)
+        // Wenn die App "weggewischt" wurde, löscht das OS den Sync-Trigger.
+        // Wir stellen ihn hier wieder her, sobald die App erneut gestartet wird.
+        try {
+            const pending = await getPendingDownloads();
+            if (pending.length > 0) {
+                console.log('[App] Wiederherstellung: Es gibt noch ausstehende Downloads (' + pending.length + ').');
+
+                // Background Sync neu registrieren (harmlos wenn bereits vorhanden)
+                if ('serviceWorker' in navigator && 'sync' in navigator.serviceWorker) {
+                    navigator.serviceWorker.ready.then(registration => {
+                        registration.sync.register('sync-pending-downloads')
+                            .then(() => console.log('[App] Background Sync wiederhergestellt'))
+                            .catch(err => console.warn('[App] Sync Wiederherstellung fehlgeschlagen', err));
+                    });
+                }
+
+                // Falls wir bereits online sind, direkt anstoßen (ohne auf Event zu warten)
+                if (navigator.onLine) {
+                    console.log('[App] Online erkannt - starte sofortigen Download-Versuch');
+                    processPendingDownloads();
+                }
+            }
+        } catch (error) {
+            console.warn('[App] Fehler bei Pending-Downloads-Check:', error);
         }
 
         if (!processUrlParameters()) {
