@@ -10,7 +10,7 @@
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
 // Cache-Version - erhöht nach IndexedDB-Migration
-const CORE_CACHE_NAME = 'thixx-oth-core-v109';
+const CORE_CACHE_NAME = 'thixx-oth-core-v110';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // IndexedDB Configuration
@@ -377,6 +377,7 @@ async function syncPendingDownloads() {
         console.error('[Service Worker] Background sync failed:', error);
     }
 }
+
 
 
 
