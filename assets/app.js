@@ -865,7 +865,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if(!form) continue;
             const input = form.elements[key];
             if (input) {
-                if (input.type === 'radio') {
+                // RadioNodeList check FIRST (has .length property)
+                if (input.length !== undefined && input[0]?.type === 'radio') {
                     form.querySelectorAll(`input[name="${key}"]`).forEach(radio => {
                         if (radio.value === value) radio.checked = true;
                     });
