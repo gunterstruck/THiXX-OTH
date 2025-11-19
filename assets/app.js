@@ -858,123 +858,53 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Zusätzliche Validierung: Form muss existieren
-        if (!form) {
-            console.error('[populateFormFromScan] Form element not found');
-            showMessage(t('errors.unknown'), 'err');
-            return;
+        if(form) form.reset();
+        setTodaysDate();
+
+        for (const [key, value] of Object.entries(appState.scannedDataObject)) {
+            if(!form) continue;
+            const input = form.elements[key];
+            if (input) {
+                if (input.type === 'radio') {
+                    form.querySelectorAll(`input[name="${key}"]`).forEach(radio => {
+                        if (radio.value === value) radio.checked = true;
+                    });
+                } else if (input.type === 'checkbox') {
+                    input.checked = (value === 'true' || value === 'on');
+                } else {
+                    input.value = value;
+                }
+            }
         }
 
-        try {
-            form.reset();
-            setTodaysDate();
-
-            // Spezielle Felder, die separat behandelt werden (nicht in generischer Schleife)
-            const specialFields = ['PT 100', 'NiCr-Ni'];
-
-            // Generische Schleife für Standard-Formularfelder
-            for (const [key, value] of Object.entries(appState.scannedDataObject)) {
-                // Spezielle Felder überspringen - werden unten separat behandelt
-                if (specialFields.includes(key)) {
-                    continue;
-                }
-
-                try {
-                    const input = form.elements[key];
-
-                    // Robuste Null-Prüfung: Element muss existieren und nicht null sein
-                    if (!input) {
-                        console.warn(`[populateFormFromScan] Element not found for key: "${key}"`);
-                        continue;
-                    }
-
-                    // RadioNodeList Behandlung: Bei Radio-Buttons gibt form.elements ein RadioNodeList zurück
-                    if (input instanceof RadioNodeList || (input.length && input[0] && input[0].type === 'radio')) {
-                        const radios = form.querySelectorAll(`input[name="${key}"]`);
-                        if (radios && radios.length > 0) {
-                            radios.forEach(radio => {
-                                if (radio && radio.value === value) radio.checked = true;
-                            });
-                        }
-                    } else if (input.type === 'checkbox') {
-                        input.checked = (value === 'true' || value === 'on');
-                    } else {
-                        // Zusätzlicher Schutz: Prüfe nochmal, ob input nicht null ist und value-Property existiert
-                        if (input && typeof input.value !== 'undefined') {
-                            input.value = value;
-                        } else {
-                            console.warn(`[populateFormFromScan] Cannot set value for field "${key}" - element or value property not available`);
-                        }
-                    }
-                } catch (fieldError) {
-                    console.error(`[populateFormFromScan] Error setting field "${key}":`, fieldError);
-                    addLogEntry(`Fehler beim Setzen von Feld "${key}"`, 'err');
-                    // Weiter mit nächstem Feld, nicht abbrechen
-                }
+        const pt100Input = document.getElementById('PT 100');
+        const hasPt100Checkbox = document.getElementById('has_PT100');
+        if (appState.scannedDataObject['PT 100']) {
+            if (pt100Input) {
+                pt100Input.value = appState.scannedDataObject['PT 100'];
+                pt100Input.disabled = false;
             }
-
-            // Spezielle Behandlung für PT 100 Messwertgeber
-            try {
-                const pt100Input = document.getElementById('PT 100');
-                const hasPt100Checkbox = document.getElementById('has_PT100');
-
-                if (appState.scannedDataObject['PT 100']) {
-                    if (pt100Input && typeof pt100Input.value !== 'undefined') {
-                        pt100Input.disabled = false;
-                        pt100Input.value = appState.scannedDataObject['PT 100'];
-                    } else {
-                        console.warn('[populateFormFromScan] PT 100 input element not found or value property unavailable');
-                    }
-
-                    if (hasPt100Checkbox && typeof hasPt100Checkbox.checked !== 'undefined') {
-                        hasPt100Checkbox.checked = true;
-                    } else {
-                        console.warn('[populateFormFromScan] has_PT100 checkbox not found');
-                    }
-                } else {
-                    if (pt100Input) pt100Input.disabled = true;
-                    if (hasPt100Checkbox) hasPt100Checkbox.checked = false;
-                }
-            } catch (pt100Error) {
-                console.error('[populateFormFromScan] Error handling PT 100:', pt100Error);
-                addLogEntry('Fehler bei PT 100 Messwertgeber', 'err');
-            }
-
-            // Spezielle Behandlung für NiCr-Ni Messwertgeber
-            try {
-                const niCrInput = document.getElementById('NiCr-Ni');
-                const hasNiCrCheckbox = document.getElementById('has_NiCr-Ni');
-
-                if (appState.scannedDataObject['NiCr-Ni']) {
-                    if (niCrInput && typeof niCrInput.value !== 'undefined') {
-                        niCrInput.disabled = false;
-                        niCrInput.value = appState.scannedDataObject['NiCr-Ni'];
-                    } else {
-                        console.warn('[populateFormFromScan] NiCr-Ni input element not found or value property unavailable');
-                    }
-
-                    if (hasNiCrCheckbox && typeof hasNiCrCheckbox.checked !== 'undefined') {
-                        hasNiCrCheckbox.checked = true;
-                    } else {
-                        console.warn('[populateFormFromScan] has_NiCr-Ni checkbox not found');
-                    }
-                } else {
-                    if (niCrInput) niCrInput.disabled = true;
-                    if (hasNiCrCheckbox) hasNiCrCheckbox.checked = false;
-                }
-            } catch (niCrError) {
-                console.error('[populateFormFromScan] Error handling NiCr-Ni:', niCrError);
-                addLogEntry('Fehler bei NiCr-Ni Messwertgeber', 'err');
-            }
-
-            switchTab('write-tab');
-            // Note: autoExpandToFitScreen is now handled by switchTab()
-            showMessage(t('messages.copySuccess'), 'ok');
-
-        } catch (error) {
-            console.error('[populateFormFromScan] Unexpected error:', error);
-            ErrorHandler.handle(error, 'populateFormFromScan');
+            if (hasPt100Checkbox) hasPt100Checkbox.checked = true;
+        } else {
+            if (pt100Input) pt100Input.disabled = true;
+            if (hasPt100Checkbox) hasPt100Checkbox.checked = false;
         }
+
+        const niCrInput = document.getElementById('NiCr-Ni');
+        const hasNiCrCheckbox = document.getElementById('has_NiCr-Ni');
+        if (appState.scannedDataObject['NiCr-Ni']) {
+            if (niCrInput) {
+                niCrInput.disabled = false;
+                niCrInput.value = appState.scannedDataObject['NiCr-Ni'];
+            }
+            if (hasNiCrCheckbox) hasNiCrCheckbox.checked = true;
+        } else {
+            if (niCrInput) niCrInput.disabled = true;
+            if (hasNiCrCheckbox) hasNiCrCheckbox.checked = false;
+        }
+
+        switchTab('write-tab');
+        showMessage(t('messages.copySuccess'), 'ok');
     }
     function saveFormAsJson() { const data = getFormData(); const jsonString = JSON.stringify(data, null, 2); const blob = new Blob([jsonString], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; const today = new Date().toISOString().slice(0, 10); a.download = `thixx-${today}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => { URL.revokeObjectURL(url); }, CONFIG.URL_REVOKE_DELAY); showMessage(t('messages.saveSuccess'), 'ok'); }
     function loadJsonIntoForm(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const data = JSON.parse(e.target.result); appState.scannedDataObject = data; populateFormFromScan(); showMessage(t('messages.loadSuccess'), 'ok') } catch (error) { const userMessage = error instanceof SyntaxError ? 'Die JSON-Datei hat ein ungültiges Format.' : error.message; ErrorHandler.handle(new Error(userMessage), 'LoadJSON'); } finally { event.target.value = null } }; reader.readAsText(file) }
