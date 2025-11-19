@@ -10,7 +10,7 @@
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
 // Cache-Version - erhöht nach Reliability-Update (Background Fetch, Retry, Notifications)
-const CORE_CACHE_NAME = 'thixx-oth-core-v120';
+const CORE_CACHE_NAME = 'thixx-oth-core-v121';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
 
 // IndexedDB Configuration
@@ -623,6 +623,7 @@ self.addEventListener('backgroundfetchclick', (event) => {
         }
     })());
 });
+
 
 
 
