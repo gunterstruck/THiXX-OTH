@@ -457,7 +457,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function generateUrlFromForm() { const params = new URLSearchParams(); const formData = getFormData(); for (const [key, value] of Object.entries(formData)) { const shortKey = fieldMap[key]; if (shortKey) params.append(shortKey, value); } return `${CONFIG.BASE_URL}?${params.toString()}`; }
-    function updatePayloadOnChange() { const writeTab = document.getElementById('write-tab'); if (writeTab?.classList.contains('active')) { const urlPayload = generateUrlFromForm(); payloadOutput.value = urlPayload; const byteCount = new TextEncoder().encode(urlPayload).length; payloadSize.textContent = `${byteCount} / ${CONFIG.MAX_PAYLOAD_SIZE} Bytes`; const isOverLimit = byteCount > CONFIG.MAX_PAYLOAD_SIZE; payloadSize.classList.toggle('limit-exceeded', isOverLimit); nfcStatusBadge.disabled = isOverLimit; } }
+    function updatePayloadOnChange() {
+        const writeTab = document.getElementById('write-tab');
+        if (!writeTab?.classList.contains('active')) return;
+
+        if (!payloadOutput || !payloadSize || !nfcStatusBadge) {
+            console.warn('[Payload] Missing UI elements, skipping payload update');
+            return;
+        }
+
+        const urlPayload = generateUrlFromForm();
+        payloadOutput.value = urlPayload;
+        const byteCount = new TextEncoder().encode(urlPayload).length;
+        payloadSize.textContent = `${byteCount} / ${CONFIG.MAX_PAYLOAD_SIZE} Bytes`;
+        const isOverLimit = byteCount > CONFIG.MAX_PAYLOAD_SIZE;
+        payloadSize.classList.toggle('limit-exceeded', isOverLimit);
+        nfcStatusBadge.disabled = isOverLimit;
+    }
     /**
      * Validates form data before NFC write operation
      * Checks voltage range, URL format, and payload size limits
