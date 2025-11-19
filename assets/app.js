@@ -520,8 +520,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Background Sync & Download Queue Management ---
     // IndexedDB Configuration (shared with Service Worker)
     const DB_NAME = 'thixx-oth-db';
-    const DB_VERSION = 1;
+    const DB_VERSION = 2; // ✅ UPGRADED: Enhanced retry & logging support
     const STORE_NAME = 'pending-downloads';
+    const MAX_RETRY_COUNT = 3;
 
     /**
      * Opens IndexedDB connection
@@ -536,11 +537,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
+                const oldVersion = event.oldVersion;
 
-                // Create object store if it doesn't exist
+                // V1: Create object store if it doesn't exist
                 if (!db.objectStoreNames.contains(STORE_NAME)) {
                     db.createObjectStore(STORE_NAME, { keyPath: 'url' });
                     console.log('[App DB] Object store created:', STORE_NAME);
+                }
+
+                // V2: Enhanced fields for retry & logging
+                if (oldVersion < 2) {
+                    console.log('[App DB] Upgrading to V2 - Enhanced retry & logging support');
+                    // New fields: retryCount, addedAt, downloadedAt, source, lastError
                 }
             };
         });
@@ -548,7 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Get all pending downloads from IndexedDB
-     * @returns {Promise<string[]>} Array of URLs
+     * @returns {Promise<Array>} Array of download objects
      */
     async function getPendingDownloads() {
         try {
@@ -561,9 +569,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 request.onsuccess = () => {
                     const items = request.result || [];
-                    const urls = items.map(item => item.url);
-                    console.log('[App DB] Retrieved pending downloads:', urls);
-                    resolve(urls);
+                    // Filter out items that exceeded retry limit
+                    const validItems = items.filter(item => {
+                        const retryCount = item.retryCount || 0;
+                        return retryCount < MAX_RETRY_COUNT;
+                    });
+                    console.log(`[App DB] Retrieved ${validItems.length} pending downloads (${items.length - validItems.length} exceeded retry limit)`);
+                    resolve(validItems);
                 };
 
                 request.onerror = () => {
@@ -590,10 +602,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return new Promise((resolve, reject) => {
                 // Use put() to avoid duplicates (will overwrite if exists)
-                const request = store.put({ url: url, addedAt: Date.now() });
+                const downloadItem = {
+                    url: url,
+                    addedAt: Date.now(),
+                    retryCount: 0,
+                    status: 'pending',
+                    source: null,
+                    downloadedAt: null,
+                    lastError: null,
+                    lastRetryAt: null
+                };
+
+                const request = store.put(downloadItem);
 
                 request.onsuccess = () => {
-                    console.log('[App DB] Added to download queue:', url);
+                    console.log('[App DB] ✅ Added to download queue:', url);
                     resolve();
                 };
 
@@ -651,6 +674,45 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
+    /**
+     * Start a Background Fetch for reliable downloads
+     * @param {string} url - The URL to download
+     * @returns {Promise<boolean>} Success status
+     */
+    async function startBackgroundFetch(url) {
+        if (!('BackgroundFetchManager' in self)) {
+            console.log('[App] Background Fetch API not supported');
+            return false;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+
+            // Generate unique ID for this fetch
+            const fetchId = `doc-fetch-${Date.now()}`;
+
+            const bgFetch = await registration.backgroundFetch.fetch(
+                fetchId,
+                [url],
+                {
+                    title: 'Dokument wird heruntergeladen',
+                    icons: [{
+                        src: '/THiXX-OTH/assets/THiXX_Icon_Grau6C6B66_Transparent_192x192.png',
+                        sizes: '192x192',
+                        type: 'image/png'
+                    }],
+                    downloadTotal: 10 * 1024 * 1024 // Assume max 10MB
+                }
+            );
+
+            console.log('[App] ✅ Background Fetch started:', fetchId);
+            return true;
+        } catch (error) {
+            console.error('[App] Background Fetch failed to start:', error);
+            return false;
+        }
+    }
+
     async function processPendingDownloads() {
         if (!navigator.onLine) {
             console.log('[App] Offline - cannot process pending downloads');
@@ -682,7 +744,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let successCount = 0;
 
-        for (const url of pending) {
+        for (const item of pending) {
+            const url = item.url;
             try {
                 if (navigator.serviceWorker.controller) {
                     navigator.serviceWorker.controller.postMessage({
@@ -698,7 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isCached) {
                         await removePendingDownload(url);
                         successCount++;
-                        console.log('[App] Successfully cached:', url);
+                        console.log('[App] ✅ Successfully cached via app-start:', url);
 
                         // Update button if it's visible
                         updateDocButtonIfVisible(url);
@@ -739,17 +802,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
         } else {
-            // OFFLINE: Queue for background sync
+            // OFFLINE: Queue for download
             await addPendingDownload(url);
 
-            // Try to register background sync
-            const syncRegistered = await registerBackgroundSync();
+            // ✅ PRIORITY 1: Try Background Fetch (most reliable)
+            const bgFetchStarted = await startBackgroundFetch(url);
 
-            showMessage(t('messages.docQueuedForDownload'), 'info');
-            button.textContent = t('docDownloadPending');
-            button.disabled = true;
+            if (bgFetchStarted) {
+                console.log('[App] ✅ Background Fetch initiated (most reliable method)');
+                showMessage('Download startet automatisch wenn Verbindung besteht', 'info');
+                button.textContent = 'Download läuft...';
+                button.disabled = true;
+                addLogEntry(`Background Fetch gestartet: ${url}`, 'info');
+            } else {
+                // ✅ FALLBACK: Use Background Sync
+                console.log('[App] Background Fetch not available, using Background Sync');
+                const syncRegistered = await registerBackgroundSync();
 
-            addLogEntry(`Download in Warteschlange: ${url}`, 'info');
+                showMessage(t('messages.docQueuedForDownload'), 'info');
+                button.textContent = t('docDownloadPending');
+                button.disabled = true;
+                addLogEntry(`Download in Warteschlange: ${url}`, 'info');
+            }
         }
     }
 
