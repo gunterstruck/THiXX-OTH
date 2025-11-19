@@ -9,9 +9,14 @@
 
 // REPO_PATH definiert für THiXX-OTH Projekt
 const REPO_PATH = '/THiXX-OTH/';
-// Cache-Version - erhöht nach Bugfix
-const CORE_CACHE_NAME = 'thixx-oth-core-v104';
+// Cache-Version - erhöht nach IndexedDB-Migration
+const CORE_CACHE_NAME = 'thixx-oth-core-v105';
 const DOC_CACHE_PREFIX = 'thixx-oth-docs';
+
+// IndexedDB Configuration
+const DB_NAME = 'thixx-oth-db';
+const DB_VERSION = 1;
+const STORE_NAME = 'pending-downloads';
 
 // Core Assets für Offline-Verfügbarkeit
 const CORE_ASSETS = [
@@ -29,6 +34,95 @@ const CORE_ASSETS = [
     '/THiXX-OTH/lang/es.json',
     '/THiXX-OTH/lang/fr.json'
 ];
+
+// ============================================================
+// IndexedDB Helper Functions (Service Worker)
+// ============================================================
+
+/**
+ * Opens IndexedDB connection
+ * @returns {Promise<IDBDatabase>}
+ */
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+
+            // Create object store if it doesn't exist
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'url' });
+                console.log('[SW DB] Object store created:', STORE_NAME);
+            }
+        };
+    });
+}
+
+/**
+ * Get all pending downloads from IndexedDB
+ * @returns {Promise<string[]>} Array of URLs
+ */
+async function getPendingDownloadsFromDB() {
+    try {
+        const db = await openDB();
+        const transaction = db.transaction(STORE_NAME, 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const items = request.result || [];
+                const urls = items.map(item => item.url);
+                console.log('[SW DB] Retrieved pending downloads:', urls);
+                resolve(urls);
+            };
+
+            request.onerror = () => {
+                console.error('[SW DB] Failed to get pending downloads:', request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('[SW DB] Failed to open database:', error);
+        return [];
+    }
+}
+
+/**
+ * Remove a pending download from IndexedDB
+ * @param {string} url - The URL to remove
+ * @returns {Promise<void>}
+ */
+async function removePendingDownloadFromDB(url) {
+    try {
+        const db = await openDB();
+        const transaction = db.transaction(STORE_NAME, 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+
+        return new Promise((resolve, reject) => {
+            const request = store.delete(url);
+
+            request.onsuccess = () => {
+                console.log('[SW DB] Removed from queue:', url);
+                resolve();
+            };
+
+            request.onerror = () => {
+                console.error('[SW DB] Failed to remove:', url, request.error);
+                reject(request.error);
+            };
+        });
+    } catch (error) {
+        console.error('[SW DB] Failed to remove pending download:', error);
+    }
+}
+
+// ============================================================
 
 async function safeCacheAddAll(cache, urls) {
     console.log('[Service Worker] Starting robust caching of assets.');
@@ -228,39 +322,15 @@ async function syncPendingDownloads() {
     console.log('[Service Worker] Starting background sync for pending downloads...');
 
     try {
-        // Get all clients to access localStorage through them
-        const clients = await self.clients.matchAll();
-
-        if (clients.length === 0) {
-            console.log('[Service Worker] No clients available for sync');
-            return;
-        }
-
-        // Request pending downloads from the first client
-        const client = clients[0];
-
-        // Post message to client to get pending downloads
-        const channel = new MessageChannel();
-
-        const pendingDownloads = await new Promise((resolve) => {
-            channel.port1.onmessage = (event) => {
-                resolve(event.data.pendingDownloads || []);
-            };
-
-            client.postMessage({
-                type: 'GET_PENDING_DOWNLOADS'
-            }, [channel.port2]);
-
-            // Timeout after 5 seconds
-            setTimeout(() => resolve([]), 5000);
-        });
+        // ✅ DIREKTER ZUGRIFF AUF IndexedDB - keine Client-Abhängigkeit mehr!
+        const pendingDownloads = await getPendingDownloadsFromDB();
 
         if (pendingDownloads.length === 0) {
             console.log('[Service Worker] No pending downloads to sync');
             return;
         }
 
-        console.log(`[Service Worker] Found ${pendingDownloads.length} pending download(s)`);
+        console.log(`[Service Worker] Found ${pendingDownloads.length} pending download(s) from IndexedDB`);
 
         const tenant = 'default';
         const docCacheName = `${DOC_CACHE_PREFIX}-${tenant}`;
@@ -275,7 +345,11 @@ async function syncPendingDownloads() {
                 successCount++;
                 console.log('[Service Worker] Successfully cached:', url);
 
-                // Notify clients about successful cache
+                // ✅ Remove from IndexedDB after successful download
+                await removePendingDownloadFromDB(url);
+
+                // Notify clients if available (optional, not required)
+                const clients = await self.clients.matchAll();
                 clients.forEach(client => {
                     client.postMessage({
                         type: 'DOC_SYNCED',
@@ -284,12 +358,14 @@ async function syncPendingDownloads() {
                 });
             } catch (error) {
                 console.error('[Service Worker] Failed to cache during sync:', url, error);
+                // Keep in queue for retry on next sync
             }
         }
 
         console.log(`[Service Worker] Background sync completed: ${successCount}/${pendingDownloads.length} successful`);
 
-        // Notify clients that sync is complete
+        // Notify clients that sync is complete (optional)
+        const clients = await self.clients.matchAll();
         clients.forEach(client => {
             client.postMessage({
                 type: 'SYNC_COMPLETE',
