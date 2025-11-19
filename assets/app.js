@@ -475,39 +475,121 @@ document.addEventListener('DOMContentLoaded', () => {
     async function isUrlCached(url) { if (!('caches' in window)) return false; try { const cache = await caches.open('thixx-oth-docs-default'); const request = new Request(url, { mode: 'no-cors' }); const response = await cache.match(request); return !!response; } catch (error) { console.error("Cache check failed:", error); return false; } }
 
     // --- Background Sync & Download Queue Management ---
-    const PENDING_DOWNLOADS_KEY = 'thixx-pending-downloads';
+    // IndexedDB Configuration (shared with Service Worker)
+    const DB_NAME = 'thixx-oth-db';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'pending-downloads';
 
-    function getPendingDownloads() {
+    /**
+     * Opens IndexedDB connection
+     * @returns {Promise<IDBDatabase>}
+     */
+    function openDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => resolve(request.result);
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+
+                // Create object store if it doesn't exist
+                if (!db.objectStoreNames.contains(STORE_NAME)) {
+                    db.createObjectStore(STORE_NAME, { keyPath: 'url' });
+                    console.log('[App DB] Object store created:', STORE_NAME);
+                }
+            };
+        });
+    }
+
+    /**
+     * Get all pending downloads from IndexedDB
+     * @returns {Promise<string[]>} Array of URLs
+     */
+    async function getPendingDownloads() {
         try {
-            const pending = localStorage.getItem(PENDING_DOWNLOADS_KEY);
-            return pending ? JSON.parse(pending) : [];
+            const db = await openDB();
+            const transaction = db.transaction(STORE_NAME, 'readonly');
+            const store = transaction.objectStore(STORE_NAME);
+
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+
+                request.onsuccess = () => {
+                    const items = request.result || [];
+                    const urls = items.map(item => item.url);
+                    console.log('[App DB] Retrieved pending downloads:', urls);
+                    resolve(urls);
+                };
+
+                request.onerror = () => {
+                    console.error('[App DB] Failed to get pending downloads:', request.error);
+                    resolve([]);
+                };
+            });
         } catch (error) {
-            console.error('[App] Failed to get pending downloads:', error);
+            console.error('[App DB] Failed to open database:', error);
             return [];
         }
     }
 
-    function addPendingDownload(url) {
+    /**
+     * Add a pending download to IndexedDB
+     * @param {string} url - The URL to add
+     * @returns {Promise<void>}
+     */
+    async function addPendingDownload(url) {
         try {
-            const pending = getPendingDownloads();
-            if (!pending.includes(url)) {
-                pending.push(url);
-                localStorage.setItem(PENDING_DOWNLOADS_KEY, JSON.stringify(pending));
-                console.log('[App] Added to download queue:', url);
-            }
+            const db = await openDB();
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+
+            return new Promise((resolve, reject) => {
+                // Use put() to avoid duplicates (will overwrite if exists)
+                const request = store.put({ url: url, addedAt: Date.now() });
+
+                request.onsuccess = () => {
+                    console.log('[App DB] Added to download queue:', url);
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    console.error('[App DB] Failed to add pending download:', request.error);
+                    reject(request.error);
+                };
+            });
         } catch (error) {
-            console.error('[App] Failed to add pending download:', error);
+            console.error('[App DB] Failed to add pending download:', error);
         }
     }
 
-    function removePendingDownload(url) {
+    /**
+     * Remove a pending download from IndexedDB
+     * @param {string} url - The URL to remove
+     * @returns {Promise<void>}
+     */
+    async function removePendingDownload(url) {
         try {
-            const pending = getPendingDownloads();
-            const updated = pending.filter(item => item !== url);
-            localStorage.setItem(PENDING_DOWNLOADS_KEY, JSON.stringify(updated));
-            console.log('[App] Removed from download queue:', url);
+            const db = await openDB();
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+
+            return new Promise((resolve, reject) => {
+                const request = store.delete(url);
+
+                request.onsuccess = () => {
+                    console.log('[App DB] Removed from download queue:', url);
+                    resolve();
+                };
+
+                request.onerror = () => {
+                    console.error('[App DB] Failed to remove:', url, request.error);
+                    reject(request.error);
+                };
+            });
         } catch (error) {
-            console.error('[App] Failed to remove pending download:', error);
+            console.error('[App DB] Failed to remove pending download:', error);
         }
     }
 
@@ -532,7 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const pending = getPendingDownloads();
+        const pending = await getPendingDownloads();
         if (pending.length === 0) {
             console.log('[App] No pending downloads to process');
             return;
@@ -571,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Check if it's now cached
                     const isCached = await isUrlCached(url);
                     if (isCached) {
-                        removePendingDownload(url);
+                        await removePendingDownload(url);
                         successCount++;
                         console.log('[App] Successfully cached:', url);
 
@@ -615,7 +697,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             // OFFLINE: Queue for background sync
-            addPendingDownload(url);
+            await addPendingDownload(url);
 
             // Try to register background sync
             const syncRegistered = await registerBackgroundSync();
@@ -638,17 +720,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Listen for messages from Service Worker
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.addEventListener('message', (event) => {
+        navigator.serviceWorker.addEventListener('message', async (event) => {
             const { type, url, successCount } = event.data;
 
             if (type === 'GET_PENDING_DOWNLOADS') {
-                // Service Worker requests pending downloads
-                const pending = getPendingDownloads();
+                // LEGACY: Service Worker requests pending downloads (not used anymore with IndexedDB)
+                // Kept for backward compatibility
+                const pending = await getPendingDownloads();
                 event.ports[0].postMessage({ pendingDownloads: pending });
             } else if (type === 'DOC_SYNCED') {
                 // A document was successfully synced
                 console.log('[App] Document synced:', url);
-                removePendingDownload(url);
+                await removePendingDownload(url);
                 updateDocButtonIfVisible(url);
             } else if (type === 'SYNC_COMPLETE') {
                 // Background sync completed
